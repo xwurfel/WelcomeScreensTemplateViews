@@ -3,7 +3,9 @@ package com.volpis.welcome_screen.config
 import android.graphics.Typeface
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class ButtonStyle(
     @ColorInt val backgroundColor: Int = 0xFF2196F3.toInt(),
     @ColorInt val textColor: Int = 0xFFFFFFFF.toInt(),

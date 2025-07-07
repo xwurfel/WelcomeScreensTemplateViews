@@ -2,7 +2,9 @@ package com.volpis.welcome_screen.config
 
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class PageIndicatorConfig(
     val isVisible: Boolean = true,
     @ColorInt val activeColor: Int = 0xFF2196F3.toInt(),

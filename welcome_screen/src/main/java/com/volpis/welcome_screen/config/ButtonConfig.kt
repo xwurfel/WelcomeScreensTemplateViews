@@ -1,5 +1,8 @@
 package com.volpis.welcome_screen.config
 
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class ButtonConfig(
     val isVisible: Boolean = true,
     val text: String = "",

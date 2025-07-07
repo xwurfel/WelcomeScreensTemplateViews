@@ -1,6 +1,7 @@
 package com.volpis.welcome_screen.config
 
 import androidx.annotation.Px
+import kotlinx.serialization.Serializable
 
 enum class ImageSizeMode {
     ASPECT_RATIO, FIXED_SIZE, FILL_WIDTH, PERCENTAGE_WIDTH, CUSTOM
@@ -21,6 +22,7 @@ enum class ImageSizeMode {
  * @param minWidth Minimum width constraint
  * @param minHeight Minimum height constraint
  */
+@Serializable
 data class ImageSizeConfig(
     val sizeMode: ImageSizeMode = ImageSizeMode.ASPECT_RATIO,
     val aspectRatio: Float = 1.2f,

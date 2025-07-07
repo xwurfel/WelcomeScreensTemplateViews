@@ -1,31 +1,114 @@
 package com.volpis.welcome_screen.views
 
 import android.content.Context
+import android.graphics.Typeface
 import android.util.AttributeSet
-import android.view.LayoutInflater
+import android.util.TypedValue
+import android.view.Gravity
+import android.widget.ImageView
 import android.widget.LinearLayout
-import androidx.constraintlayout.widget.ConstraintLayout
-import androidx.core.view.updateLayoutParams
+import android.widget.Space
+import android.widget.TextView
+import androidx.cardview.widget.CardView
+import androidx.core.content.ContextCompat
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.volpis.welcome_screen.R
+import com.volpis.welcome_screen.WelcomeScreenData
 import com.volpis.welcome_screen.config.ImageScaleType
 import com.volpis.welcome_screen.config.ImageSizeMode
-import com.volpis.welcome_screen.R
 import com.volpis.welcome_screen.config.WelcomeScreenConfig
-import com.volpis.welcome_screen.WelcomeScreenData
-import com.volpis.welcome_screen.databinding.ViewWelcomeScreenContentBinding
 import com.volpis.welcome_screen.utils.dpToPx
 import com.volpis.welcome_screen.utils.setGradientBackground
-import com.volpis.welcome_screen.utils.setRoundedCorners
 
 class WelcomeScreenView @JvmOverloads constructor(
     context: Context,
     attrs: AttributeSet? = null,
     defStyleAttr: Int = 0
-) : ConstraintLayout(context, attrs, defStyleAttr) {
+) : LinearLayout(context, attrs, defStyleAttr) {
 
-    private val binding: ViewWelcomeScreenContentBinding =
-        ViewWelcomeScreenContentBinding.inflate(LayoutInflater.from(context), this, true)
+    private lateinit var topSpacer: Space
+    private lateinit var imageContainer: CardView
+    private lateinit var imageView: ImageView
+    private lateinit var titleText: TextView
+    private lateinit var descriptionText: TextView
+    private lateinit var bottomSpacer: Space
+
+    init {
+        orientation = VERTICAL
+        gravity = Gravity.CENTER_HORIZONTAL
+        initViews()
+    }
+
+    private fun initViews() {
+        topSpacer = Space(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                0,
+                0.5f
+            )
+        }
+        addView(topSpacer)
+
+        imageContainer = CardView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                0,
+                2f
+            ).apply {
+                setMargins(context.dpToPx(32), 0, context.dpToPx(32), 0)
+            }
+        }
+
+        imageView = ImageView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.MATCH_PARENT
+            )
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            contentDescription = context.getString(R.string.welcome_image_description)
+        }
+
+        imageContainer.addView(imageView)
+        addView(imageContainer)
+
+        titleText = TextView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(context.dpToPx(16), context.dpToPx(32), context.dpToPx(16), 0)
+            }
+            gravity = Gravity.CENTER
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 28f)
+            typeface = Typeface.DEFAULT_BOLD
+            setTextColor(ContextCompat.getColor(context, android.R.color.black))
+        }
+        addView(titleText)
+
+        descriptionText = TextView(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                LayoutParams.WRAP_CONTENT
+            ).apply {
+                setMargins(context.dpToPx(8), context.dpToPx(16), context.dpToPx(8), 0)
+            }
+            gravity = Gravity.CENTER
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            setTextColor(ContextCompat.getColor(context, android.R.color.darker_gray))
+            setLineSpacing(context.dpToPx(6).toFloat(), 1f)
+        }
+        addView(descriptionText)
+
+        bottomSpacer = Space(context).apply {
+            layoutParams = LayoutParams(
+                LayoutParams.MATCH_PARENT,
+                0,
+                1f
+            )
+        }
+        addView(bottomSpacer)
+    }
 
     fun setupScreen(screenData: WelcomeScreenData, config: WelcomeScreenConfig) {
         setupBackground(screenData, config)
@@ -47,140 +130,137 @@ class WelcomeScreenView @JvmOverloads constructor(
     private fun setupImage(screenData: WelcomeScreenData, config: WelcomeScreenConfig) {
         val imageConfig = config.imageSizeConfig
 
-        // Configure image view layout parameters
-        binding.imageView.updateLayoutParams<LinearLayout.LayoutParams> {
-            when (imageConfig.sizeMode) {
-                ImageSizeMode.FIXED_SIZE -> {
-                    width = imageConfig.fixedWidth ?: context.dpToPx(200)
-                    height = imageConfig.fixedHeight ?: context.dpToPx(200)
-                    weight = 0f
-                }
+        val containerParams = imageContainer.layoutParams as LayoutParams
 
-                ImageSizeMode.ASPECT_RATIO -> {
-                    width = LinearLayout.LayoutParams.MATCH_PARENT
-                    height = 0
-                    weight = 2f // Use weight for flexible sizing
-                }
-
-                ImageSizeMode.FILL_WIDTH -> {
-                    width = LinearLayout.LayoutParams.MATCH_PARENT
-                    height = LinearLayout.LayoutParams.WRAP_CONTENT
-                    weight = 0f
-                }
-
-                ImageSizeMode.PERCENTAGE_WIDTH -> {
-                    width = LinearLayout.LayoutParams.MATCH_PARENT
-                    height = 0
-                    weight = 2f * imageConfig.widthFraction
-                }
-
-                ImageSizeMode.CUSTOM -> {
-                    width = imageConfig.fixedWidth ?: LinearLayout.LayoutParams.MATCH_PARENT
-                    height = imageConfig.fixedHeight ?: LinearLayout.LayoutParams.WRAP_CONTENT
-                    weight = if (imageConfig.fixedHeight == null) 2f else 0f
-                }
+        when (imageConfig.sizeMode) {
+            ImageSizeMode.FIXED_SIZE -> {
+                containerParams.width = imageConfig.fixedWidth ?: context.dpToPx(200)
+                containerParams.height = imageConfig.fixedHeight ?: context.dpToPx(200)
+                containerParams.weight = 0f
             }
 
-            // Set margins as padding equivalent
-            setMargins(
-                imageConfig.horizontalPadding,
-                imageConfig.verticalPadding,
-                imageConfig.horizontalPadding,
-                imageConfig.verticalPadding
-            )
+            ImageSizeMode.ASPECT_RATIO -> {
+                containerParams.width = LayoutParams.MATCH_PARENT
+                containerParams.height = 0
+                containerParams.weight = 2f
+            }
+
+            ImageSizeMode.FILL_WIDTH -> {
+                containerParams.width = LayoutParams.MATCH_PARENT
+                containerParams.height = LayoutParams.WRAP_CONTENT
+                containerParams.weight = 0f
+            }
+
+            ImageSizeMode.PERCENTAGE_WIDTH -> {
+                containerParams.width = LayoutParams.MATCH_PARENT
+                containerParams.height = 0
+                containerParams.weight = 2f * imageConfig.widthFraction
+            }
+
+            ImageSizeMode.CUSTOM -> {
+                containerParams.width = imageConfig.fixedWidth ?: LayoutParams.MATCH_PARENT
+                containerParams.height = imageConfig.fixedHeight ?: LayoutParams.WRAP_CONTENT
+                containerParams.weight = if (imageConfig.fixedHeight == null) 2f else 0f
+            }
         }
 
-        // Configure scale type
-        binding.imageView.scaleType = when (config.imageScaleType) {
-            ImageScaleType.FIT -> android.widget.ImageView.ScaleType.FIT_CENTER
-            ImageScaleType.CROP -> android.widget.ImageView.ScaleType.CENTER_CROP
-            ImageScaleType.FILL_WIDTH -> android.widget.ImageView.ScaleType.FIT_XY
-            ImageScaleType.FILL_HEIGHT -> android.widget.ImageView.ScaleType.MATRIX
+        containerParams.setMargins(
+            imageConfig.horizontalPadding,
+            imageConfig.verticalPadding,
+            imageConfig.horizontalPadding,
+            imageConfig.verticalPadding
+        )
+
+        imageContainer.layoutParams = containerParams
+
+        imageView.scaleType = when (config.imageScaleType) {
+            ImageScaleType.FIT -> ImageView.ScaleType.FIT_CENTER
+            ImageScaleType.CROP -> ImageView.ScaleType.CENTER_CROP
+            ImageScaleType.FILL_WIDTH -> ImageView.ScaleType.FIT_XY
+            ImageScaleType.FILL_HEIGHT -> ImageView.ScaleType.MATRIX
         }
 
-        // Set elevation and corner radius
-        binding.imageView.elevation = config.imageElevation
-        binding.imageView.setRoundedCorners(config.imageCornerRadius)
+        imageContainer.cardElevation = config.imageElevation
+        imageContainer.radius = config.imageCornerRadius
 
-        // Load image with Glide
         val cornerRadiusPx = config.imageCornerRadius.toInt()
 
         when {
             screenData.imageRes != null -> {
+                imageView.visibility = VISIBLE
+                imageContainer.visibility = VISIBLE
                 Glide.with(context)
                     .load(screenData.imageRes)
                     .transform(RoundedCorners(cornerRadiusPx))
-                    .into(binding.imageView)
+                    .into(imageView)
             }
 
             screenData.imageDrawable != null -> {
+                imageView.visibility = VISIBLE
+                imageContainer.visibility = VISIBLE
                 Glide.with(context)
                     .load(screenData.imageDrawable)
                     .transform(RoundedCorners(cornerRadiusPx))
-                    .into(binding.imageView)
+                    .into(imageView)
             }
 
             screenData.imageUrl != null -> {
+                imageView.visibility = VISIBLE
+                imageContainer.visibility = VISIBLE
                 Glide.with(context)
                     .load(screenData.imageUrl)
                     .transform(RoundedCorners(cornerRadiusPx))
-                    .placeholder(R.drawable.welcome_image_placeholder)
-                    .error(R.drawable.welcome_image_error)
-                    .into(binding.imageView)
+                    .placeholder(android.R.drawable.ic_menu_gallery)
+                    .error(android.R.drawable.ic_menu_close_clear_cancel)
+                    .into(imageView)
             }
 
             else -> {
-                // Hide image view if no image is provided
-                binding.imageView.visibility = GONE
+                imageView.visibility = GONE
+                imageContainer.visibility = GONE
             }
         }
     }
 
     private fun setupText(screenData: WelcomeScreenData, config: WelcomeScreenConfig) {
-        // Title configuration
-        binding.titleText.apply {
+        titleText.apply {
             text = screenData.title
             setTextColor(screenData.textColor ?: config.titleTextColor)
-            textSize = config.titleTextSize / resources.displayMetrics.scaledDensity
-            typeface = config.titleTypeface
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, config.titleTextSize)
+            typeface = config.titleTypeface.toTypeface()
         }
 
-        // Description configuration
-        binding.descriptionText.apply {
+        descriptionText.apply {
             text = screenData.description
             setTextColor(screenData.textColor ?: config.descriptionTextColor)
-            textSize = config.descriptionTextSize / resources.displayMetrics.scaledDensity
-            typeface = config.descriptionTypeface
+            setTextSize(TypedValue.COMPLEX_UNIT_PX, config.descriptionTextSize)
+            typeface = config.descriptionTypeface.toTypeface()
         }
     }
 
     private fun setupSpacing(config: WelcomeScreenConfig) {
         val spacing = config.customSpacing
 
-        // Configure spacing between elements using layout parameters
-        binding.titleText.updateLayoutParams<LinearLayout.LayoutParams> {
-            topMargin = spacing.imageToTitleSpacing
-        }
+        val titleParams = titleText.layoutParams as LayoutParams
+        titleParams.topMargin = spacing.imageToTitleSpacing
+        titleText.layoutParams = titleParams
 
-        binding.descriptionText.updateLayoutParams<LinearLayout.LayoutParams> {
-            topMargin = spacing.titleToDescriptionSpacing
-        }
+        val descriptionParams = descriptionText.layoutParams as LayoutParams
+        descriptionParams.topMargin = spacing.titleToDescriptionSpacing
+        descriptionText.layoutParams = descriptionParams
 
-        // Set container padding
         setPadding(
             spacing.horizontalPadding,
             spacing.verticalPadding,
             spacing.horizontalPadding,
-            spacing.verticalPadding
+            spacing.verticalPadding + context.dpToPx(120)
         )
     }
 
     private fun setupAccessibility(screenData: WelcomeScreenData) {
-        // Set content descriptions for accessibility
-        binding.imageView.contentDescription = screenData.contentDescription
+        imageView.contentDescription = screenData.contentDescription
             ?: context.getString(R.string.welcome_image_description)
 
-        // Make the entire view focusable for screen readers
         isFocusable = true
         contentDescription = "${screenData.title}. ${screenData.description}"
     }

@@ -1,13 +1,14 @@
 package com.volpis.welcome_screen.config
 
-import android.graphics.Typeface
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
+import kotlinx.serialization.Serializable
 
 fun welcomeScreenConfig(block: WelcomeScreenConfig.() -> Unit): WelcomeScreenConfig {
     return WelcomeScreenConfig().apply(block)
 }
 
+@Serializable
 data class WelcomeScreenConfig(
     val skipButton: ButtonConfig = ButtonConfig(
         isVisible = true,
@@ -74,11 +75,11 @@ data class WelcomeScreenConfig(
 
     @ColorInt val titleTextColor: Int = 0xFF000000.toInt(),
     @Px val titleTextSize: Float = 84f,
-    val titleTypeface: Typeface = Typeface.DEFAULT_BOLD,
+    val titleTypeface: WelcomeTypeface = WelcomeTypeface.DEFAULT,
 
     @ColorInt val descriptionTextColor: Int = 0xFF9E9E9E.toInt(),
     @Px val descriptionTextSize: Float = 48f,
-    val descriptionTypeface: Typeface = Typeface.DEFAULT,
+    val descriptionTypeface: WelcomeTypeface = WelcomeTypeface.DEFAULT,
 
     @ColorInt val backgroundColor: Int = 0xFFFFFFFF.toInt(),
     @ColorInt val backgroundGradientColor: Int? = null,
@@ -98,6 +99,7 @@ data class WelcomeScreenConfig(
     val customSpacing: WelcomeScreenSpacing = WelcomeScreenSpacing(),
 )
 
+@Serializable
 data class WelcomeScreenSpacing(
     @Px val imageToTitleSpacing: Int = 96,
     @Px val titleToDescriptionSpacing: Int = 48,

@@ -3,8 +3,9 @@ package com.volpis.welcome_screen.views
 import android.view.LayoutInflater
 import android.view.ViewGroup
 import androidx.recyclerview.widget.RecyclerView
-import com.volpis.welcome_screen.config.WelcomeScreenConfig
+import com.volpis.welcome_screen.R
 import com.volpis.welcome_screen.WelcomeScreenData
+import com.volpis.welcome_screen.config.WelcomeScreenConfig
 
 class WelcomeScreenPagerAdapter(
     private val screens: List<WelcomeScreenData>,
@@ -12,12 +13,9 @@ class WelcomeScreenPagerAdapter(
 ) : RecyclerView.Adapter<WelcomeScreenPagerAdapter.WelcomeScreenViewHolder>() {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): WelcomeScreenViewHolder {
-        val binding = ViewWelcomeScreenBinding.inflate(
-            LayoutInflater.from(parent.context),
-            parent,
-            false
-        )
-        return WelcomeScreenViewHolder(binding)
+        val view = LayoutInflater.from(parent.context)
+            .inflate(R.layout.view_welcome_screen, parent, false)
+        return WelcomeScreenViewHolder(view as android.widget.FrameLayout)
     }
 
     override fun onBindViewHolder(holder: WelcomeScreenViewHolder, position: Int) {
@@ -27,16 +25,20 @@ class WelcomeScreenPagerAdapter(
     override fun getItemCount(): Int = screens.size
 
     class WelcomeScreenViewHolder(
-        private val binding: ViewWelcomeScreenBinding
-    ) : RecyclerView.ViewHolder(binding.root) {
+        private val containerView: android.widget.FrameLayout
+    ) : RecyclerView.ViewHolder(containerView) {
 
         fun bind(screenData: WelcomeScreenData, config: WelcomeScreenConfig) {
-            val welcomeScreenView = WelcomeScreenView(binding.root.context)
+            containerView.removeAllViews()
+
+            val welcomeScreenView = WelcomeScreenView(containerView.context)
             welcomeScreenView.setupScreen(screenData, config)
 
-            // Clear any existing views and add the configured view
-            (binding.root as ViewGroup).removeAllViews()
-            (binding.root as ViewGroup).addView(welcomeScreenView)
+            val layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            )
+            containerView.addView(welcomeScreenView, layoutParams)
         }
     }
 }
