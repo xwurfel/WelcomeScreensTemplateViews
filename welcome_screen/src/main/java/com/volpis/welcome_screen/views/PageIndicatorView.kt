@@ -4,16 +4,19 @@ import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
-import android.graphics.*
+import android.graphics.Canvas
+import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import androidx.core.graphics.withSave
 import androidx.viewpager2.widget.ViewPager2
 import com.volpis.welcome_screen.config.IndicatorAnimation
 import com.volpis.welcome_screen.config.IndicatorShape
-import kotlin.math.*
-import androidx.core.graphics.withSave
 import com.volpis.welcome_screen.config.PageIndicatorConfig
+import kotlin.math.abs
 
 class PageIndicatorView @JvmOverloads constructor(
     context: Context,
@@ -94,7 +97,7 @@ class PageIndicatorView @JvmOverloads constructor(
 
     private fun animateScale() {
         val scaleAnimator = ValueAnimator.ofFloat(animatedSize, config.size.toFloat()).apply {
-            ValueAnimator.setDuration = config.animationDuration.toLong()
+            duration = config.animationDuration.toLong()
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animator ->
                 animatedSize = animator.animatedValue as Float
@@ -110,7 +113,7 @@ class PageIndicatorView @JvmOverloads constructor(
 
     private fun animateFade() {
         val fadeAnimator = ValueAnimator.ofFloat(animatedAlpha, 1f).apply {
-            ValueAnimator.setDuration = config.animationDuration.toLong()
+            duration = config.animationDuration.toLong()
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animator ->
                 animatedAlpha = animator.animatedValue as Float
@@ -126,7 +129,7 @@ class PageIndicatorView @JvmOverloads constructor(
 
     private fun animateSlide() {
         val slideAnimator = ValueAnimator.ofFloat(animatedPosition, currentPage.toFloat()).apply {
-            ValueAnimator.setDuration = config.animationDuration.toLong()
+            duration = config.animationDuration.toLong()
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animator ->
                 animatedPosition = animator.animatedValue as Float
@@ -146,12 +149,12 @@ class PageIndicatorView @JvmOverloads constructor(
 
     private fun animateBounce() {
         val bounceAnimator = ObjectAnimator.ofFloat(this, "scaleX", 1f, 1.3f, 1f).apply {
-            ObjectAnimator.setDuration = config.animationDuration.toLong()
+            duration = config.animationDuration.toLong()
             repeatCount = 2
         }
 
         val bounceY = ObjectAnimator.ofFloat(this, "scaleY", 1f, 1.3f, 1f).apply {
-            ObjectAnimator.setDuration = config.animationDuration.toLong()
+            duration = config.animationDuration.toLong()
             repeatCount = 2
         }
 
@@ -163,7 +166,7 @@ class PageIndicatorView @JvmOverloads constructor(
 
     private fun animatePulse() {
         val pulseAnimator = ValueAnimator.ofFloat(0.5f, 1f).apply {
-            ValueAnimator.setDuration = config.animationDuration.toLong() * 2
+            duration = config.animationDuration.toLong() * 2
             repeatCount = ValueAnimator.INFINITE
             repeatMode = ValueAnimator.REVERSE
             addUpdateListener { animator ->
@@ -181,7 +184,7 @@ class PageIndicatorView @JvmOverloads constructor(
     private fun animateRotate() {
         val rotateAnimator =
             ValueAnimator.ofFloat(animatedRotation, animatedRotation + 360f).apply {
-                ValueAnimator.setDuration = config.animationDuration.toLong() * 4
+                duration = config.animationDuration.toLong() * 4
                 repeatCount = ValueAnimator.INFINITE
                 addUpdateListener { animator ->
                     animatedRotation = animator.animatedValue as Float

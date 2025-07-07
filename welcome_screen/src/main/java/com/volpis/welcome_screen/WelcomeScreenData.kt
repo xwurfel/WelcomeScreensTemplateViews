@@ -1,10 +1,13 @@
 package com.volpis.welcome_screen
 
 import android.graphics.drawable.Drawable
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
+@Serializable
 data class WelcomeScreenData(
     val imageRes: Int? = null,
-    val imageDrawable: Drawable? = null,
+    @Transient val imageDrawable: Drawable? = null,
     val imageUrl: String? = null,
     val title: String,
     val description: String,

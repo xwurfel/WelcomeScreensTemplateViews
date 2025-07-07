@@ -12,6 +12,7 @@ import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
 import com.volpis.welcome_screen.config.ButtonConfig
 import com.volpis.welcome_screen.config.ButtonPlacement
+import com.volpis.welcome_screen.config.WelcomeTypeface
 
 fun Context.dpToPx(dp: Int): Int {
     return TypedValue.applyDimension(
@@ -60,10 +61,10 @@ fun Button.configure(buttonConfig: ButtonConfig, onClick: () -> Unit) {
     setTextColor(style.textColor)
     setTextSize(TypedValue.COMPLEX_UNIT_PX, style.textSize)
 
-    typeface = when (style.fontWeight) {
-        600, 700, 800, 900 -> Typeface.DEFAULT_BOLD
+    typeface = (when (style.fontWeight) {
+        600, 700, 800, 900 -> WelcomeTypeface.DEFAULT_BOLD
         else -> style.typeface
-    }
+    }).toTypeface()
 
     val backgroundDrawable = GradientDrawable().apply {
         setColor(style.backgroundColor)

@@ -1,6 +1,5 @@
 package com.volpis.welcome_screen.config
 
-import android.graphics.Typeface
 import androidx.annotation.ColorInt
 import androidx.annotation.Px
 import kotlinx.serialization.Serializable
@@ -10,7 +9,7 @@ data class ButtonStyle(
     @ColorInt val backgroundColor: Int = 0xFF2196F3.toInt(),
     @ColorInt val textColor: Int = 0xFFFFFFFF.toInt(),
     @Px val textSize: Float = 48f,
-    val typeface: Typeface = Typeface.DEFAULT,
+    val typeface: WelcomeTypeface = WelcomeTypeface.DEFAULT,
     val isUnderlined: Boolean = false,
     val isBold: Boolean = false,
     @Px val borderWidth: Int = 0,
