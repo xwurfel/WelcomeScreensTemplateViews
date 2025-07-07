@@ -1,8 +1,6 @@
-package com.volpis.welcome_screen
+package com.volpis.welcome_screen.config
 
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-
+import androidx.annotation.Px
 
 enum class ImageSizeMode {
     ASPECT_RATIO, FIXED_SIZE, FILL_WIDTH, PERCENTAGE_WIDTH, CUSTOM
@@ -26,40 +24,44 @@ enum class ImageSizeMode {
 data class ImageSizeConfig(
     val sizeMode: ImageSizeMode = ImageSizeMode.ASPECT_RATIO,
     val aspectRatio: Float = 1.2f,
-    val fixedWidth: Dp? = null,
-    val fixedHeight: Dp? = null,
+    @Px val fixedWidth: Int? = null,
+    @Px val fixedHeight: Int? = null,
     val widthFraction: Float = 1f,
-    val horizontalPadding: Dp = 32.dp,
-    val verticalPadding: Dp = 0.dp,
-    val maxWidth: Dp? = null,
-    val maxHeight: Dp? = null,
-    val minWidth: Dp? = null,
-    val minHeight: Dp? = null
+    @Px val horizontalPadding: Int = 96,
+    @Px val verticalPadding: Int = 0,
+    @Px val maxWidth: Int? = null,
+    @Px val maxHeight: Int? = null,
+    @Px val minWidth: Int? = null,
+    @Px val minHeight: Int? = null
 ) {
     companion object {
         fun small() = ImageSizeConfig(
             sizeMode = ImageSizeMode.PERCENTAGE_WIDTH,
             aspectRatio = 1f,
             widthFraction = 0.6f,
-            horizontalPadding = 48.dp
+            horizontalPadding = 144
         )
 
         fun banner() = ImageSizeConfig(
-            sizeMode = ImageSizeMode.ASPECT_RATIO, aspectRatio = 2.5f, horizontalPadding = 16.dp
+            sizeMode = ImageSizeMode.ASPECT_RATIO,
+            aspectRatio = 2.5f,
+            horizontalPadding = 48
         )
 
         fun portrait() = ImageSizeConfig(
-            sizeMode = ImageSizeMode.ASPECT_RATIO, aspectRatio = 0.8f, horizontalPadding = 48.dp
+            sizeMode = ImageSizeMode.ASPECT_RATIO,
+            aspectRatio = 0.8f,
+            horizontalPadding = 144
         )
 
-        fun fixedSize(width: Dp, height: Dp) = ImageSizeConfig(
+        fun fixedSize(width: Int, height: Int) = ImageSizeConfig(
             sizeMode = ImageSizeMode.FIXED_SIZE,
             fixedWidth = width,
             fixedHeight = height,
-            horizontalPadding = 24.dp
+            horizontalPadding = 72
         )
 
-        fun fillWidth(aspectRatio: Float = 1.2f, padding: Dp = 16.dp) = ImageSizeConfig(
+        fun fillWidth(aspectRatio: Float = 1.2f, padding: Int = 48) = ImageSizeConfig(
             sizeMode = ImageSizeMode.FILL_WIDTH,
             aspectRatio = aspectRatio,
             horizontalPadding = padding

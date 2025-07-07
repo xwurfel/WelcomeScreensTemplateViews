@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Welcome Screen Strings -->
+    <string name="welcome_skip">Skip</string>
+    <string name="welcome_next">Next</string>
+    <string name="welcome_previous">Previous</string>
+    <string name="welcome_get_started">Get Started</string>
+    <string name="welcome_continue">Continue</string>
+    <string name="welcome_finish">Finish</string>
+
+    <!-- Content Descriptions -->
+    <string name="welcome_image_description">Welcome screen illustration</string>
+    <string name="page_indicator_description">Page %1$d of %2$d</string>
+    <string name="skip_button_description">Skip welcome screens</string>
+    <string name="next_button_description">Go to next screen</string>
+    <string name="previous_button_description">Go to previous screen</string>
+    <string name="finish_button_description">Complete welcome screens</string>
+</resources>

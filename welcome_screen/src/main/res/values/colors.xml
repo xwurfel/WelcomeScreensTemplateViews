@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Welcome Screen Colors -->
+    <color name="welcome_primary">#2196F3</color>
+    <color name="welcome_primary_dark">#1976D2</color>
+    <color name="welcome_accent">#FF4081</color>
+
+    <!-- Text Colors -->
+    <color name="welcome_title_text">#212121</color>
+    <color name="welcome_description_text">#757575</color>
+    <color name="welcome_button_text">#FFFFFF</color>
+
+    <!-- Background Colors -->
+    <color name="welcome_background">#FAFAFA</color>
+    <color name="welcome_background_dark">#303030</color>
+
+    <!-- Button Colors -->
+    <color name="welcome_button_primary">#2196F3</color>
+    <color name="welcome_button_secondary">#E0E0E0</color>
+    <color name="welcome_button_transparent">#00000000</color>
+
+    <!-- Page Indicator Colors -->
+    <color name="page_indicator_active">#2196F3</color>
+    <color name="page_indicator_inactive">#BDBDBD</color>
+
+    <!-- Dark Theme Colors -->
+    <color name="welcome_title_text_dark">#FFFFFF</color>
+    <color name="welcome_description_text_dark">#B0B0B0</color>
+    <color name="welcome_background_gradient_start">#1C1C1E</color>
+    <color name="welcome_background_gradient_end">#2C2C2E</color>
+</resources>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Welcome Screen Dimensions -->
+    <dimen name="welcome_content_padding">24dp</dimen>
+    <dimen name="welcome_button_margin">16dp</dimen>
+    <dimen name="welcome_button_padding_horizontal">24dp</dimen>
+    <dimen name="welcome_button_padding_vertical">12dp</dimen>
+    <dimen name="welcome_button_corner_radius">24dp</dimen>
+
+    <!-- Text Sizes -->
+    <dimen name="welcome_title_text_size">28sp</dimen>
+    <dimen name="welcome_description_text_size">16sp</dimen>
+    <dimen name="welcome_button_text_size">16sp</dimen>
+
+    <!-- Spacing -->
+    <dimen name="welcome_image_to_title_spacing">32dp</dimen>
+    <dimen name="welcome_title_to_description_spacing">16dp</dimen>
+    <dimen name="welcome_description_to_indicator_spacing">24dp</dimen>
+
+    <!-- Page Indicator -->
+    <dimen name="page_indicator_size">8dp</dimen>
+    <dimen name="page_indicator_spacing">12dp</dimen>
+    <dimen name="page_indicator_margin_bottom">120dp</dimen>
+
+    <!-- Image -->
+    <dimen name="welcome_image_corner_radius">16dp</dimen>
+    <dimen name="welcome_image_elevation">4dp</dimen>
+</resources>

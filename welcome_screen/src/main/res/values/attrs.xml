@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="PageIndicatorView">
+        <attr name="indicatorActiveColor" format="color" />
+        <attr name="indicatorInactiveColor" format="color" />
+        <attr name="indicatorSize" format="dimension" />
+        <attr name="indicatorSpacing" format="dimension" />
+        <attr name="indicatorAnimationType" format="enum">
+            <enum name="scale" value="0" />
+            <enum name="fade" value="1" />
+            <enum name="slide" value="2" />
+            <enum name="morphing" value="3" />
+            <enum name="bounce" value="4" />
+            <enum name="pulse" value="5" />
+            <enum name="rotate" value="6" />
+            <enum name="none" value="7" />
+        </attr>
+    </declare-styleable>
+
+    <declare-styleable name="WelcomeScreenView">
+        <attr name="titleTextSize" format="dimension" />
+        <attr name="titleTextColor" format="color" />
+        <attr name="descriptionTextSize" format="dimension" />
+        <attr name="descriptionTextColor" format="color" />
+        <attr name="imageCornerRadius" format="dimension" />
+        <attr name="imageElevation" format="dimension" />
+    </declare-styleable>
+</resources>

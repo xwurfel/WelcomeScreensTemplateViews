@@ -1,4 +1,4 @@
-package com.volpis.welcome_screen
+package com.volpis.welcome_screen.config
 
 enum class IndicatorPlacement {
     CENTER_BELOW_DESCRIPTION,
