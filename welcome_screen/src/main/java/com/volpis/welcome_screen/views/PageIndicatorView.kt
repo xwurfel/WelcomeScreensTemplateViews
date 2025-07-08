@@ -1,7 +1,6 @@
 package com.volpis.welcome_screen.views
 
 import android.animation.AnimatorSet
-import android.animation.ObjectAnimator
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Canvas
@@ -11,6 +10,8 @@ import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.BounceInterpolator
+import android.view.animation.OvershootInterpolator
 import androidx.core.graphics.withSave
 import androidx.viewpager2.widget.ViewPager2
 import com.volpis.welcome_screen.config.IndicatorAnimation
@@ -29,21 +30,27 @@ class PageIndicatorView @JvmOverloads constructor(
     private var currentPage = 0
     private var pageOffset = 0f
 
-    private val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val inactivePaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
     private var animatorSet: AnimatorSet? = null
-    private var animatedPosition = 0f
-    private var animatedSize = 0f
+    private var animatedScale = 1f
     private var animatedAlpha = 1f
     private var animatedRotation = 0f
+    private var animatedTranslationX = 0f
+    private var animatedColor = 0
+
+    private var morphProgress = 0f
+    private var slidePosition = 0f
 
     init {
         setupPaints()
     }
 
     private fun setupPaints() {
-        paint.style = Paint.Style.FILL
+        activePaint.style = Paint.Style.FILL
+        inactivePaint.style = Paint.Style.FILL
         strokePaint.style = Paint.Style.STROKE
     }
 
@@ -51,7 +58,7 @@ class PageIndicatorView @JvmOverloads constructor(
         this.config = config
         this.totalPages = viewPager.adapter?.itemCount ?: 0
 
-        setupPaints()
+        updatePaintColors()
         visibility = if (config.isVisible && totalPages > 1) VISIBLE else GONE
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
@@ -61,6 +68,9 @@ class PageIndicatorView @JvmOverloads constructor(
                 positionOffsetPixels: Int
             ) {
                 pageOffset = positionOffset
+
+                slidePosition = position + positionOffset
+
                 invalidate()
             }
 
@@ -70,6 +80,18 @@ class PageIndicatorView @JvmOverloads constructor(
         })
 
         requestLayout()
+    }
+
+    private fun updatePaintColors() {
+        activePaint.color = config.activeColor
+        inactivePaint.color = config.inactiveColor
+
+        if (config.strokeWidth > 0) {
+            strokePaint.strokeWidth = config.strokeWidth.toFloat()
+            strokePaint.color = config.strokeColor
+        }
+
+        animatedColor = config.activeColor
     }
 
     fun setCurrentPage(page: Int) {
@@ -96,11 +118,11 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animateScale() {
-        val scaleAnimator = ValueAnimator.ofFloat(animatedSize, config.size.toFloat()).apply {
+        val scaleAnimator = ValueAnimator.ofFloat(animatedScale, 1.2f, 1f).apply {
             duration = config.animationDuration.toLong()
-            interpolator = AccelerateDecelerateInterpolator()
+            interpolator = OvershootInterpolator(1.2f)
             addUpdateListener { animator ->
-                animatedSize = animator.animatedValue as Float
+                animatedScale = animator.animatedValue as Float
                 invalidate()
             }
         }
@@ -112,9 +134,16 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animateFade() {
-        val fadeAnimator = ValueAnimator.ofFloat(animatedAlpha, 1f).apply {
-            duration = config.animationDuration.toLong()
-            interpolator = AccelerateDecelerateInterpolator()
+        val fadeOut = ValueAnimator.ofFloat(1f, 0.3f).apply {
+            duration = (config.animationDuration / 2).toLong()
+            addUpdateListener { animator ->
+                animatedAlpha = animator.animatedValue as Float
+                invalidate()
+            }
+        }
+
+        val fadeIn = ValueAnimator.ofFloat(0.3f, 1f).apply {
+            duration = (config.animationDuration / 2).toLong()
             addUpdateListener { animator ->
                 animatedAlpha = animator.animatedValue as Float
                 invalidate()
@@ -122,17 +151,17 @@ class PageIndicatorView @JvmOverloads constructor(
         }
 
         animatorSet = AnimatorSet().apply {
-            play(fadeAnimator)
+            playSequentially(fadeOut, fadeIn)
             start()
         }
     }
 
     private fun animateSlide() {
-        val slideAnimator = ValueAnimator.ofFloat(animatedPosition, currentPage.toFloat()).apply {
+        val slideAnimator = ValueAnimator.ofFloat(slidePosition, currentPage.toFloat()).apply {
             duration = config.animationDuration.toLong()
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animator ->
-                animatedPosition = animator.animatedValue as Float
+                slidePosition = animator.animatedValue as Float
                 invalidate()
             }
         }
@@ -144,33 +173,45 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animateMorphing() {
-        animateSlide()
-    }
-
-    private fun animateBounce() {
-        val bounceAnimator = ObjectAnimator.ofFloat(this, "scaleX", 1f, 1.3f, 1f).apply {
+        val morphAnimator = ValueAnimator.ofFloat(0f, 1f).apply {
             duration = config.animationDuration.toLong()
-            repeatCount = 2
-        }
-
-        val bounceY = ObjectAnimator.ofFloat(this, "scaleY", 1f, 1.3f, 1f).apply {
-            duration = config.animationDuration.toLong()
-            repeatCount = 2
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animator ->
+                morphProgress = animator.animatedValue as Float
+                invalidate()
+            }
         }
 
         animatorSet = AnimatorSet().apply {
-            playTogether(bounceAnimator, bounceY)
+            play(morphAnimator)
+            start()
+        }
+    }
+
+    private fun animateBounce() {
+        val bounceScale = ValueAnimator.ofFloat(1f, 1.4f, 1f).apply {
+            duration = config.animationDuration.toLong()
+            interpolator = BounceInterpolator()
+            addUpdateListener { animator ->
+                animatedScale = animator.animatedValue as Float
+                invalidate()
+            }
+        }
+
+        animatorSet = AnimatorSet().apply {
+            play(bounceScale)
             start()
         }
     }
 
     private fun animatePulse() {
-        val pulseAnimator = ValueAnimator.ofFloat(0.5f, 1f).apply {
+        val pulseAnimator = ValueAnimator.ofFloat(1f, 1.3f, 1f).apply {
             duration = config.animationDuration.toLong() * 2
             repeatCount = ValueAnimator.INFINITE
             repeatMode = ValueAnimator.REVERSE
+            interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animator ->
-                animatedAlpha = animator.animatedValue as Float
+                animatedScale = animator.animatedValue as Float
                 invalidate()
             }
         }
@@ -182,15 +223,14 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animateRotate() {
-        val rotateAnimator =
-            ValueAnimator.ofFloat(animatedRotation, animatedRotation + 360f).apply {
-                duration = config.animationDuration.toLong() * 4
-                repeatCount = ValueAnimator.INFINITE
-                addUpdateListener { animator ->
-                    animatedRotation = animator.animatedValue as Float
-                    invalidate()
-                }
+        val rotateAnimator = ValueAnimator.ofFloat(0f, 360f).apply {
+            duration = config.animationDuration.toLong()
+            interpolator = AccelerateDecelerateInterpolator()
+            addUpdateListener { animator ->
+                animatedRotation = animator.animatedValue as Float
+                invalidate()
             }
+        }
 
         animatorSet = AnimatorSet().apply {
             play(rotateAnimator)
@@ -204,9 +244,11 @@ class PageIndicatorView @JvmOverloads constructor(
             return
         }
 
-        val width = when (config.animationType) {
+        val indicatorWidth = when (config.animationType) {
             IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
-                (totalPages - 1) * (config.size + config.spacing) + (config.size * 2.5f).toInt()
+                val regularIndicators = totalPages - 1
+                val activeIndicatorWidth = config.size * 2.5f
+                (regularIndicators * (config.size + config.spacing) + activeIndicatorWidth).toInt()
             }
 
             else -> {
@@ -214,9 +256,16 @@ class PageIndicatorView @JvmOverloads constructor(
             }
         }
 
-        val height = if (config.useProgressiveSizing) config.maxSize else config.size
+        val indicatorHeight = if (config.useProgressiveSizing) {
+            config.maxSize
+        } else {
+            config.size
+        }
 
-        setMeasuredDimension(width, height)
+        val finalWidth = indicatorWidth + paddingLeft + paddingRight
+        val finalHeight = indicatorHeight + paddingTop + paddingBottom
+
+        setMeasuredDimension(finalWidth, finalHeight)
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -225,106 +274,143 @@ class PageIndicatorView @JvmOverloads constructor(
         if (totalPages <= 1) return
 
         val centerY = height / 2f
-        var startX = 0f
+        var currentX = paddingLeft.toFloat()
 
         for (i in 0 until totalPages) {
             val isActive = i == currentPage
-            val isNear = abs(i - currentPage) <= 1
+            val distanceFromActive = abs(i - slidePosition)
 
-            val indicatorSize = when {
-                isActive && config.useProgressiveSizing -> config.maxSize.toFloat()
-                isNear && config.useProgressiveSizing -> ((config.maxSize + config.minSize) / 2).toFloat()
-                config.useProgressiveSizing -> config.minSize.toFloat()
-                else -> config.size.toFloat()
+            // Calculate size based on proximity to active position
+            val baseSize = if (config.useProgressiveSizing) {
+                when {
+                    distanceFromActive < 0.5f -> config.maxSize.toFloat()
+                    distanceFromActive < 1.5f -> {
+                        val progress = (distanceFromActive - 0.5f)
+                        config.maxSize - progress * (config.maxSize - config.minSize)
+                    }
+
+                    else -> config.minSize.toFloat()
+                }
+            } else {
+                config.size.toFloat()
             }
 
-            val color = if (isActive) config.activeColor else config.inactiveColor
-            paint.color = color
+            // Apply animation scaling
+            val finalSize = baseSize * if (isActive) animatedScale else 1f
 
-            if (config.strokeWidth > 0) {
-                strokePaint.strokeWidth = config.strokeWidth.toFloat()
-                strokePaint.color = config.strokeColor
+            // Calculate colors with smooth transitions
+            val alpha = when (config.animationType) {
+                IndicatorAnimation.FADE -> if (isActive) (255 * animatedAlpha).toInt() else 255
+                else -> if (distanceFromActive < 1f) 255 else (255 * 0.6f).toInt()
             }
 
-            val currentSize = when (config.animationType) {
-                IndicatorAnimation.SCALE -> if (isActive) indicatorSize * 1.2f else indicatorSize
-                IndicatorAnimation.FADE -> indicatorSize
-                else -> indicatorSize
+            val paint = if (isActive || distanceFromActive < 1f) {
+                activePaint.apply {
+                    color = config.activeColor
+                    this.alpha = alpha
+                }
+            } else {
+                inactivePaint.apply {
+                    color = config.inactiveColor
+                    this.alpha = alpha
+                }
             }
 
-            val currentAlpha = when (config.animationType) {
-                IndicatorAnimation.FADE -> if (isActive) 255 else (255 * 0.3f).toInt()
-                IndicatorAnimation.PULSE -> if (isActive) (255 * animatedAlpha).toInt() else 255
-                else -> 255
+            // Calculate indicator width for slide/morphing animations
+            val indicatorWidth = when (config.animationType) {
+                IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
+                    if (isActive) finalSize * 2.5f else finalSize
+                }
+
+                else -> finalSize
             }
 
-            paint.alpha = currentAlpha
+            val centerX = currentX + indicatorWidth / 2f
 
-            val centerX = startX + currentSize / 2f
-
+            // Apply rotation for rotate animation
             canvas.withSave {
                 if (config.animationType == IndicatorAnimation.ROTATE && isActive) {
                     rotate(animatedRotation, centerX, centerY)
                 }
 
-                when (config.shape) {
-                    IndicatorShape.CIRCLE -> {
-                        drawCircle(centerX, centerY, currentSize / 2f, paint)
-                        if (config.strokeWidth > 0) {
-                            drawCircle(centerX, centerY, currentSize / 2f, strokePaint)
-                        }
-                    }
-
-                    IndicatorShape.ROUNDED_RECTANGLE -> {
-                        val width =
-                            if (config.animationType == IndicatorAnimation.SLIDE && isActive) {
-                                currentSize * 2.5f
-                            } else currentSize
-
-                        val rect = RectF(
-                            centerX - width / 2f,
-                            centerY - currentSize / 2f,
-                            centerX + width / 2f,
-                            centerY + currentSize / 2f
-                        )
-                        drawRoundRect(
-                            rect,
-                            config.customCornerRadius,
-                            config.customCornerRadius,
-                            paint
-                        )
-                    }
-
-                    IndicatorShape.RECTANGLE -> {
-                        val rect = RectF(
-                            centerX - currentSize / 2f,
-                            centerY - currentSize / 2f,
-                            centerX + currentSize / 2f,
-                            centerY + currentSize / 2f
-                        )
-                        drawRect(rect, paint)
-                    }
-
-                    IndicatorShape.DIAMOND -> {
-                        val path = Path().apply {
-                            moveTo(centerX, centerY - currentSize / 2f)
-                            lineTo(centerX + currentSize / 2f, centerY)
-                            lineTo(centerX, centerY + currentSize / 2f)
-                            lineTo(centerX - currentSize / 2f, centerY)
-                            close()
-                        }
-                        drawPath(path, paint)
-                    }
-                }
-
+                // Draw the indicator based on shape
+                drawIndicator(
+                    canvas = this,
+                    centerX = centerX,
+                    centerY = centerY,
+                    width = indicatorWidth,
+                    height = finalSize,
+                    paint = paint,
+                    isActive = isActive
+                )
             }
 
-            startX += when (config.animationType) {
-                IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
-                    if (isActive) currentSize * 2.5f + config.spacing else currentSize + config.spacing
-                }
+            currentX += indicatorWidth + config.spacing
+        }
+    }
 
-                else -> currentSize + config.spacing
+    private fun drawIndicator(
+        canvas: Canvas,
+        centerX: Float,
+        centerY: Float,
+        width: Float,
+        height: Float,
+        paint: Paint,
+        isActive: Boolean
+    ) {
+        when (config.shape) {
+            IndicatorShape.CIRCLE -> {
+                canvas.drawCircle(centerX, centerY, height / 2f, paint)
+
+                if (config.strokeWidth > 0 && isActive) {
+                    canvas.drawCircle(centerX, centerY, height / 2f, strokePaint)
+                }
+            }
+
+            IndicatorShape.ROUNDED_RECTANGLE -> {
+                val rect = RectF(
+                    centerX - width / 2f,
+                    centerY - height / 2f,
+                    centerX + width / 2f,
+                    centerY + height / 2f
+                )
+
+                canvas.drawRoundRect(
+                    rect,
+                    config.customCornerRadius,
+                    config.customCornerRadius,
+                    paint
+                )
+
+                if (config.strokeWidth > 0 && isActive) {
+                    canvas.drawRoundRect(
+                        rect,
+                        config.customCornerRadius,
+                        config.customCornerRadius,
+                        strokePaint
+                    )
+                }
+            }
+
+            IndicatorShape.RECTANGLE -> {
+                val rect = RectF(
+                    centerX - width / 2f,
+                    centerY - height / 2f,
+                    centerX + width / 2f,
+                    centerY + height / 2f
+                )
+                canvas.drawRect(rect, paint)
+            }
+
+            IndicatorShape.DIAMOND -> {
+                val path = Path().apply {
+                    moveTo(centerX, centerY - height / 2f)
+                    lineTo(centerX + width / 2f, centerY)
+                    lineTo(centerX, centerY + height / 2f)
+                    lineTo(centerX - width / 2f, centerY)
+                    close()
+                }
+                canvas.drawPath(path, paint)
             }
         }
     }
@@ -332,5 +418,16 @@ class PageIndicatorView @JvmOverloads constructor(
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         animatorSet?.cancel()
+    }
+
+    fun resetAnimations() {
+        animatorSet?.cancel()
+        animatedScale = 1f
+        animatedAlpha = 1f
+        animatedRotation = 0f
+        animatedTranslationX = 0f
+        morphProgress = 0f
+        slidePosition = currentPage.toFloat()
+        invalidate()
     }
 }
