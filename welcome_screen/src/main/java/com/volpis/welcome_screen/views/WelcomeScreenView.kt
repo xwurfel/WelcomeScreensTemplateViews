@@ -1,5 +1,9 @@
 package com.volpis.welcome_screen.views
 
+import android.animation.Animator
+import android.animation.AnimatorSet
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
 import android.content.Context
 import android.graphics.Typeface
 import android.util.AttributeSet
@@ -7,6 +11,7 @@ import android.util.TypedValue
 import android.view.Gravity
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.Space
@@ -42,10 +47,23 @@ class WelcomeScreenView @JvmOverloads constructor(
     private lateinit var bottomSpacer: Space
 
     private var isAnimated = false
+    private var animatorSet: AnimatorSet? = null
+
+    private companion object {
+        const val ANIMATION_DURATION_FAST = 250L
+        const val ANIMATION_DURATION_MEDIUM = 350L
+        const val ANIMATION_DELAY_SHORT = 50L
+        const val ANIMATION_DELAY_MEDIUM = 100L
+        const val ANIMATION_DELAY_LONG = 150L
+        const val TRANSLATION_DISTANCE = 20f
+        const val SCALE_FROM = 0.96f
+        const val SCALE_TO = 1f
+    }
 
     init {
         orientation = VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
+        setLayerType(LAYER_TYPE_HARDWARE, null)
         initViews()
     }
 
@@ -70,8 +88,7 @@ class WelcomeScreenView @JvmOverloads constructor(
             cardElevation = context.dpToPx(8).toFloat()
             radius = context.dpToPx(16).toFloat()
             useCompatPadding = true
-
-            setLayerType(LAYER_TYPE_NONE, null)
+            setLayerType(LAYER_TYPE_HARDWARE, null)
         }
 
         imageView = ImageView(context).apply {
@@ -107,10 +124,7 @@ class WelcomeScreenView @JvmOverloads constructor(
             setTextColor(ContextCompat.getColor(context, android.R.color.black))
             letterSpacing = 0f
             setLineSpacing(context.dpToPx(4).toFloat(), 1f)
-
-            // Set initial state for animation
-            alpha = 0f
-            translationY = context.dpToPx(15).toFloat() // Reduced for smoother animation
+            setLayerType(LAYER_TYPE_HARDWARE, null)
         }
 
         descriptionText = TextView(context).apply {
@@ -125,10 +139,7 @@ class WelcomeScreenView @JvmOverloads constructor(
             setTextColor(ContextCompat.getColor(context, android.R.color.darker_gray))
             setLineSpacing(context.dpToPx(6).toFloat(), 1.1f)
             letterSpacing = 0.01f
-
-            // Set initial state for animation
-            alpha = 0f
-            translationY = context.dpToPx(15).toFloat() // Reduced for smoother animation
+            setLayerType(LAYER_TYPE_HARDWARE, null)
         }
 
         contentContainer.addView(titleText)
@@ -152,8 +163,22 @@ class WelcomeScreenView @JvmOverloads constructor(
         setupSpacing(config)
         setupAccessibility(screenData)
 
-        // Don't auto-animate here, let the fragment control animations
         isAnimated = false
+        resetViewStates()
+    }
+
+    private fun resetViewStates() {
+        titleText.alpha = 0f
+        titleText.translationY = context.dpToPx(TRANSLATION_DISTANCE.toInt()).toFloat()
+
+        descriptionText.alpha = 0f
+        descriptionText.translationY = context.dpToPx(TRANSLATION_DISTANCE.toInt()).toFloat()
+
+        if (imageContainer.isVisible) {
+            imageContainer.alpha = 0f
+            imageContainer.scaleX = SCALE_FROM
+            imageContainer.scaleY = SCALE_FROM
+        }
     }
 
     private fun setupBackground(screenData: WelcomeScreenData, config: WelcomeScreenConfig) {
@@ -167,7 +192,6 @@ class WelcomeScreenView @JvmOverloads constructor(
 
     private fun setupImage(screenData: WelcomeScreenData, config: WelcomeScreenConfig) {
         val imageConfig = config.imageSizeConfig
-
         configureImageContainer(imageConfig)
 
         imageView.scaleType = when (config.imageScaleType) {
@@ -357,73 +381,66 @@ class WelcomeScreenView @JvmOverloads constructor(
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
     }
 
-    // Optimized animation method
     fun startEntranceAnimation() {
-        if (isAnimated) return // Prevent duplicate animations
+        if (isAnimated) return
 
         isAnimated = true
+        animatorSet?.cancel()
 
-        // Reset initial states
-        titleText.alpha = 0f
-        titleText.translationY = context.dpToPx(15).toFloat()
-        descriptionText.alpha = 0f
-        descriptionText.translationY = context.dpToPx(15).toFloat()
+        val animators = mutableListOf<ObjectAnimator>()
+
+        val titleAnimator = ObjectAnimator.ofPropertyValuesHolder(
+            titleText,
+            PropertyValuesHolder.ofFloat("alpha", 0f, 1f),
+            PropertyValuesHolder.ofFloat("translationY", titleText.translationY, 0f)
+        ).apply {
+            duration = ANIMATION_DURATION_FAST
+            startDelay = ANIMATION_DELAY_MEDIUM
+            interpolator = AccelerateDecelerateInterpolator()
+        }
+        animators.add(titleAnimator)
+
+        val descriptionAnimator = ObjectAnimator.ofPropertyValuesHolder(
+            descriptionText,
+            PropertyValuesHolder.ofFloat("alpha", 0f, 1f),
+            PropertyValuesHolder.ofFloat("translationY", descriptionText.translationY, 0f)
+        ).apply {
+            duration = ANIMATION_DURATION_FAST
+            startDelay = ANIMATION_DELAY_LONG
+            interpolator = AccelerateDecelerateInterpolator()
+        }
+        animators.add(descriptionAnimator)
 
         if (imageContainer.isVisible) {
-            imageContainer.alpha = 0f
-            imageContainer.scaleX = 0.95f // Reduced scale for smoother animation
-            imageContainer.scaleY = 0.95f
+            val imageAnimator = ObjectAnimator.ofPropertyValuesHolder(
+                imageContainer,
+                PropertyValuesHolder.ofFloat("alpha", 0f, 1f),
+                PropertyValuesHolder.ofFloat("scaleX", SCALE_FROM, SCALE_TO),
+                PropertyValuesHolder.ofFloat("scaleY", SCALE_FROM, SCALE_TO)
+            ).apply {
+                duration = ANIMATION_DURATION_MEDIUM
+                startDelay = ANIMATION_DELAY_SHORT
+                interpolator = OvershootInterpolator(0.8f)
+            }
+            animators.add(imageAnimator)
         }
 
-        animateContent()
-    }
-
-    private fun animateContent() {
-        // Faster, smoother animations with reduced delays
-        titleText.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(400) // Faster animation
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .setStartDelay(100) // Reduced delay
-            .start()
-
-        descriptionText.animate()
-            .alpha(1f)
-            .translationY(0f)
-            .setDuration(400) // Faster animation
-            .setInterpolator(AccelerateDecelerateInterpolator())
-            .setStartDelay(200) // Reduced delay
-            .start()
-
-        if (imageContainer.isVisible) {
-            imageContainer.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(500) // Faster animation
-                .setInterpolator(AccelerateDecelerateInterpolator())
-                .setStartDelay(50) // Minimal delay
-                .start()
+        animatorSet = AnimatorSet().apply {
+            playTogether(animators.map { it as Animator })
+            start()
         }
     }
 
     fun resetAnimation() {
+        animatorSet?.cancel()
         isAnimated = false
-        titleText.alpha = 0f
-        titleText.translationY = context.dpToPx(15).toFloat()
-        descriptionText.alpha = 0f
-        descriptionText.translationY = context.dpToPx(15).toFloat()
-
-        if (imageContainer.isVisible) {
-            imageContainer.alpha = 0f
-            imageContainer.scaleX = 0.95f
-            imageContainer.scaleY = 0.95f
-        }
+        resetViewStates()
     }
 
     fun showContentImmediately() {
+        animatorSet?.cancel()
         isAnimated = true
+
         titleText.alpha = 1f
         titleText.translationY = 0f
         descriptionText.alpha = 1f
@@ -431,15 +448,20 @@ class WelcomeScreenView @JvmOverloads constructor(
 
         if (imageContainer.isVisible) {
             imageContainer.alpha = 1f
-            imageContainer.scaleX = 1f
-            imageContainer.scaleY = 1f
+            imageContainer.scaleX = SCALE_TO
+            imageContainer.scaleY = SCALE_TO
         }
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
-        titleText.animate().cancel()
-        descriptionText.animate().cancel()
-        imageContainer.animate().cancel()
+        animatorSet?.cancel()
+        animatorSet = null
+        setLayerType(LAYER_TYPE_NONE, null)
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        setLayerType(LAYER_TYPE_HARDWARE, null)
     }
 }

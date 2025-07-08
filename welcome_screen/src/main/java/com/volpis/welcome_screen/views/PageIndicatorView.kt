@@ -6,11 +6,11 @@ import android.content.Context
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RectF
 import android.util.AttributeSet
 import android.view.View
 import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.BounceInterpolator
+import android.view.animation.LinearInterpolator
 import android.view.animation.OvershootInterpolator
 import androidx.core.graphics.withSave
 import androidx.viewpager2.widget.ViewPager2
@@ -18,6 +18,7 @@ import com.volpis.welcome_screen.config.IndicatorAnimation
 import com.volpis.welcome_screen.config.IndicatorShape
 import com.volpis.welcome_screen.config.PageIndicatorConfig
 import kotlin.math.abs
+import kotlin.math.min
 
 class PageIndicatorView @JvmOverloads constructor(
     context: Context,
@@ -28,36 +29,57 @@ class PageIndicatorView @JvmOverloads constructor(
     private var config = PageIndicatorConfig()
     private var totalPages = 0
     private var currentPage = 0
-    private var pageOffset = 0f
+    private var targetPage = 0
 
-    private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val inactivePaint = Paint(Paint.ANTI_ALIAS_FLAG)
-    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private var slideProgress = 0f // 0f to 1f transition progress
+    private var isTransitioning = false
+    private var animationDirection = 0 // -1 left, 1 right, 0 none
+
+    private var indicatorSpacing = 0f
+    private var baseIndicatorSize = 0f
+    private var expandedIndicatorWidth = 0f
+    private var totalWidth = 0f
+    private var startX = 0f
+
+    private val activePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val inactivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.FILL
+    }
+    private val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE
+    }
 
     private var animatorSet: AnimatorSet? = null
     private var animatedScale = 1f
     private var animatedAlpha = 1f
     private var animatedRotation = 0f
-    private var animatedColor = 0
 
-    private var slideOffset = 0f
-    private var isAnimating = false
+    private var lastInvalidateTime = 0L
+    private val invalidateThreshold = 16L // ~60fps
 
     init {
+        setLayerType(LAYER_TYPE_HARDWARE, null)
         setupPaints()
     }
 
     private fun setupPaints() {
-        activePaint.style = Paint.Style.FILL
-        inactivePaint.style = Paint.Style.FILL
+        activePaint.isAntiAlias = true
+        inactivePaint.isAntiAlias = true
+        strokePaint.isAntiAlias = true
         strokePaint.style = Paint.Style.STROKE
     }
 
     fun setupWithViewPager(viewPager: ViewPager2, config: PageIndicatorConfig) {
         this.config = config
         this.totalPages = viewPager.adapter?.itemCount ?: 0
+        this.currentPage = 0
+        this.targetPage = 0
 
         updatePaintColors()
+        preCalculateValues()
+
         visibility = if (config.isVisible && totalPages > 1) VISIBLE else GONE
 
         viewPager.registerOnPageChangeCallback(object : ViewPager2.OnPageChangeCallback() {
@@ -66,10 +88,7 @@ class PageIndicatorView @JvmOverloads constructor(
                 positionOffset: Float,
                 positionOffsetPixels: Int
             ) {
-                // Immediate visual feedback for smooth scrolling
-                pageOffset = positionOffset
-                slideOffset = position + positionOffset
-                invalidate()
+                handlePageScrolled(position, positionOffset)
             }
 
             override fun onPageSelected(position: Int) {
@@ -77,11 +96,53 @@ class PageIndicatorView @JvmOverloads constructor(
             }
 
             override fun onPageScrollStateChanged(state: Int) {
-                isAnimating = state != ViewPager2.SCROLL_STATE_IDLE
+                isTransitioning = state != ViewPager2.SCROLL_STATE_IDLE
+                if (state == ViewPager2.SCROLL_STATE_IDLE) {
+                    slideProgress = 0f
+                    animationDirection = 0
+                    optimizedInvalidate()
+                }
             }
         })
 
         requestLayout()
+    }
+
+    private fun handlePageScrolled(position: Int, positionOffset: Float) {
+        if (abs(positionOffset) < 0.001f && !isTransitioning) return
+
+        val newTargetPage = if (positionOffset > 0.5f) position + 1 else position
+
+        if (targetPage != newTargetPage) {
+            targetPage = newTargetPage
+            animationDirection = if (newTargetPage > currentPage) 1 else -1
+        }
+
+        slideProgress = when {
+            positionOffset <= 0.5f -> positionOffset * 2f
+            else -> (1f - positionOffset) * 2f
+        }
+
+        optimizedInvalidate()
+    }
+
+    private fun preCalculateValues() {
+        baseIndicatorSize = config.size.toFloat()
+        indicatorSpacing = config.spacing.toFloat()
+
+        when (config.animationType) {
+            IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
+                expandedIndicatorWidth = baseIndicatorSize * 2.5f
+                totalWidth =
+                    ((totalPages - 1) * (baseIndicatorSize + indicatorSpacing)) + expandedIndicatorWidth
+            }
+
+            else -> {
+                expandedIndicatorWidth = baseIndicatorSize
+                totalWidth =
+                    (totalPages * baseIndicatorSize) + ((totalPages - 1) * indicatorSpacing)
+            }
+        }
     }
 
     private fun updatePaintColors() {
@@ -92,14 +153,16 @@ class PageIndicatorView @JvmOverloads constructor(
             strokePaint.strokeWidth = config.strokeWidth.toFloat()
             strokePaint.color = config.strokeColor
         }
-
-        animatedColor = config.activeColor
     }
 
     fun setCurrentPage(page: Int) {
-        if (currentPage != page) {
+        if (currentPage != page && page in 0 until totalPages) {
             currentPage = page
-            if (!isAnimating) {
+            targetPage = page
+            slideProgress = 0f
+            animationDirection = 0
+
+            if (!isTransitioning) {
                 animatePageChange()
             }
         }
@@ -115,20 +178,20 @@ class PageIndicatorView @JvmOverloads constructor(
             IndicatorAnimation.PULSE -> animatePulse()
             IndicatorAnimation.ROTATE -> animateRotate()
             IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
-                invalidate()
+                optimizedInvalidate()
             }
 
-            IndicatorAnimation.NONE -> invalidate()
+            IndicatorAnimation.NONE -> optimizedInvalidate()
         }
     }
 
     private fun animateScale() {
-        val scaleAnimator = ValueAnimator.ofFloat(1f, 1.3f, 1f).apply {
-            duration = (config.animationDuration * 0.6f).toLong() // Faster animation
-            interpolator = OvershootInterpolator(0.8f) // Reduced overshoot
+        val scaleAnimator = ValueAnimator.ofFloat(1f, 1.2f, 1f).apply {
+            duration = min(config.animationDuration.toLong(), 300L)
+            interpolator = OvershootInterpolator(0.6f)
             addUpdateListener { animator ->
                 animatedScale = animator.animatedValue as Float
-                invalidate()
+                optimizedInvalidate()
             }
         }
 
@@ -139,12 +202,12 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animateFade() {
-        val fadeAnimator = ValueAnimator.ofFloat(0.5f, 1f).apply {
-            duration = (config.animationDuration * 0.5f).toLong()
+        val fadeAnimator = ValueAnimator.ofFloat(0.6f, 1f).apply {
+            duration = min(config.animationDuration.toLong(), 250L)
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animator ->
                 animatedAlpha = animator.animatedValue as Float
-                invalidate()
+                optimizedInvalidate()
             }
         }
 
@@ -155,12 +218,12 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animateBounce() {
-        val bounceScale = ValueAnimator.ofFloat(1f, 1.2f, 1f).apply {
-            duration = (config.animationDuration * 0.7f).toLong()
+        val bounceScale = ValueAnimator.ofFloat(1f, 1.15f, 1f).apply {
+            duration = min(config.animationDuration.toLong(), 400L)
             interpolator = BounceInterpolator()
             addUpdateListener { animator ->
                 animatedScale = animator.animatedValue as Float
-                invalidate()
+                optimizedInvalidate()
             }
         }
 
@@ -171,14 +234,14 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animatePulse() {
-        val pulseAnimator = ValueAnimator.ofFloat(1f, 1.15f, 1f).apply {
-            duration = config.animationDuration.toLong()
-            repeatCount = 2 // Limited repeats for performance
+        val pulseAnimator = ValueAnimator.ofFloat(1f, 1.1f, 1f).apply {
+            duration = min(config.animationDuration.toLong(), 600L)
+            repeatCount = 1
             repeatMode = ValueAnimator.REVERSE
-            interpolator = AccelerateDecelerateInterpolator()
+            interpolator = LinearInterpolator()
             addUpdateListener { animator ->
                 animatedScale = animator.animatedValue as Float
-                invalidate()
+                optimizedInvalidate()
             }
         }
 
@@ -189,12 +252,12 @@ class PageIndicatorView @JvmOverloads constructor(
     }
 
     private fun animateRotate() {
-        val rotateAnimator = ValueAnimator.ofFloat(0f, 180f).apply {
-            duration = (config.animationDuration * 0.8f).toLong()
+        val rotateAnimator = ValueAnimator.ofFloat(0f, 90f).apply {
+            duration = min(config.animationDuration.toLong(), 300L)
             interpolator = AccelerateDecelerateInterpolator()
             addUpdateListener { animator ->
                 animatedRotation = animator.animatedValue as Float
-                invalidate()
+                optimizedInvalidate()
             }
         }
 
@@ -210,29 +273,16 @@ class PageIndicatorView @JvmOverloads constructor(
             return
         }
 
-        val indicatorWidth = when (config.animationType) {
-            IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
-                // Calculate width for slide animation with proper spacing
-                val regularIndicators = totalPages - 1
-                val activeIndicatorWidth = config.size * 2.5f
-                (regularIndicators * (config.size + config.spacing) + activeIndicatorWidth + config.spacing).toInt()
-            }
-
-            else -> {
-                totalPages * config.size + (totalPages - 1) * config.spacing
-            }
-        }
-
-        val indicatorHeight = if (config.useProgressiveSizing) {
-            config.maxSize
-        } else {
-            config.size
-        }
-
-        val finalWidth = indicatorWidth + paddingLeft + paddingRight
-        val finalHeight = indicatorHeight + paddingTop + paddingBottom
+        val maxSize = if (config.useProgressiveSizing) config.maxSize else config.size
+        val finalWidth = (totalWidth + paddingLeft + paddingRight).toInt()
+        val finalHeight = maxSize + paddingTop + paddingBottom
 
         setMeasuredDimension(finalWidth, finalHeight)
+    }
+
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+        super.onSizeChanged(w, h, oldw, oldh)
+        startX = (w - totalWidth) / 2f
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -241,54 +291,16 @@ class PageIndicatorView @JvmOverloads constructor(
         if (totalPages <= 1) return
 
         val centerY = height / 2f
-
-        val totalIndicatorWidth: Float = when (config.animationType) {
-            IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
-                val regularWidth = (totalPages - 1) * (config.size + config.spacing)
-                val activeWidth = config.size * 2.5f
-                regularWidth + activeWidth
-            }
-
-            else -> {
-                (totalPages * config.size + (totalPages - 1) * config.spacing).toFloat()
-            }
-        }
-
-        var currentX = (width - totalIndicatorWidth) / 2f
+        var currentX = startX
 
         for (i in 0 until totalPages) {
-            val distanceFromActive = abs(i - slideOffset)
             val isActive = i == currentPage
-            val baseSize = if (config.useProgressiveSizing) {
-                when {
-                    distanceFromActive < 0.5f -> config.maxSize.toFloat()
-                    distanceFromActive < 1.5f -> {
-                        val progress = (distanceFromActive - 0.5f)
-                        config.maxSize - progress * (config.maxSize - config.minSize)
-                    }
+            val isTarget = i == targetPage
+            val alpha = calculateAlpha(i)
+            val size = calculateSize(i)
+            val width = calculateWidth(i)
 
-                    else -> config.minSize.toFloat()
-                }
-            } else {
-                config.size.toFloat()
-            }
-
-            val finalSize = if (isActive) baseSize * animatedScale else baseSize
-
-            val alpha = when (config.animationType) {
-                IndicatorAnimation.FADE -> {
-                    if (isActive) (255 * animatedAlpha).toInt()
-                    else if (distanceFromActive < 1f) (255 * (1f - distanceFromActive * 0.4f)).toInt()
-                    else (255 * 0.6f).toInt()
-                }
-
-                else -> {
-                    if (distanceFromActive < 1f) (255 * (1f - distanceFromActive * 0.3f)).toInt()
-                    else (255 * 0.7f).toInt()
-                }
-            }
-
-            val paint = if (isActive || distanceFromActive < 1f) {
+            val paint = if (isActive || isTarget) {
                 activePaint.apply {
                     color = config.activeColor
                     this.alpha = alpha
@@ -300,47 +312,100 @@ class PageIndicatorView @JvmOverloads constructor(
                 }
             }
 
-            val indicatorWidth = when (config.animationType) {
-                IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
-                    if (isActive) {
-                        val baseWidth = finalSize * 2.5f
-                        if (isAnimating) {
-                            val offsetFactor = 1f - abs(pageOffset)
-                            finalSize + (baseWidth - finalSize) * offsetFactor
-                        } else {
-                            baseWidth
-                        }
-                    } else {
-                        finalSize
-                    }
-                }
-
-                else -> finalSize
-            }
-
-            val centerX = currentX + indicatorWidth / 2f
+            val centerX = currentX + width / 2f
 
             canvas.withSave {
                 if (config.animationType == IndicatorAnimation.ROTATE && isActive) {
                     rotate(animatedRotation, centerX, centerY)
                 }
 
-                drawIndicator(
+                drawOptimizedIndicator(
                     canvas = this,
                     centerX = centerX,
                     centerY = centerY,
-                    width = indicatorWidth,
-                    height = finalSize,
+                    width = width,
+                    height = size,
                     paint = paint,
                     isActive = isActive
                 )
             }
 
-            currentX += indicatorWidth + config.spacing
+            currentX += width + indicatorSpacing
         }
     }
 
-    private fun drawIndicator(
+    private fun calculateAlpha(index: Int): Int {
+        val isActive = index == currentPage
+        val isTarget = index == targetPage
+
+        return when (config.animationType) {
+            IndicatorAnimation.FADE -> {
+                when {
+                    isActive -> (255 * animatedAlpha).toInt()
+                    isTarget && isTransitioning -> (255 * slideProgress).toInt()
+                    else -> (255 * 0.6f).toInt()
+                }
+            }
+
+            else -> {
+                when {
+                    isActive || isTarget -> 255
+                    else -> (255 * 0.7f).toInt()
+                }
+            }
+        }
+    }
+
+    private fun calculateSize(index: Int): Float {
+        val isActive = index == currentPage
+        val baseSize = if (config.useProgressiveSizing) {
+            val distance = abs(index - currentPage)
+            when (distance) {
+                0 -> config.maxSize.toFloat()
+                1 -> ((config.maxSize + config.minSize) / 2f)
+                else -> config.minSize.toFloat()
+            }
+        } else {
+            baseIndicatorSize
+        }
+
+        return when {
+            isActive && (config.animationType == IndicatorAnimation.SCALE ||
+                    config.animationType == IndicatorAnimation.BOUNCE ||
+                    config.animationType == IndicatorAnimation.PULSE) -> {
+                baseSize * animatedScale
+            }
+
+            else -> baseSize
+        }
+    }
+
+    private fun calculateWidth(index: Int): Float {
+        val isActive = index == currentPage
+        val isTarget = index == targetPage
+
+        return when (config.animationType) {
+            IndicatorAnimation.SLIDE, IndicatorAnimation.MORPHING -> {
+                when {
+                    isActive && !isTransitioning -> expandedIndicatorWidth
+                    isActive && isTransitioning -> {
+                        val progress = 1f - slideProgress
+                        baseIndicatorSize + (expandedIndicatorWidth - baseIndicatorSize) * progress
+                    }
+
+                    isTarget && isTransitioning -> {
+                        baseIndicatorSize + (expandedIndicatorWidth - baseIndicatorSize) * slideProgress
+                    }
+
+                    else -> baseIndicatorSize
+                }
+            }
+
+            else -> calculateSize(index)
+        }
+    }
+
+    private fun drawOptimizedIndicator(
         canvas: Canvas,
         centerX: Float,
         centerY: Float,
@@ -360,15 +425,13 @@ class PageIndicatorView @JvmOverloads constructor(
             }
 
             IndicatorShape.ROUNDED_RECTANGLE -> {
-                val rect = RectF(
-                    centerX - width / 2f,
-                    centerY - height / 2f,
-                    centerX + width / 2f,
-                    centerY + height / 2f
-                )
+                val left = centerX - width / 2f
+                val top = centerY - height / 2f
+                val right = centerX + width / 2f
+                val bottom = centerY + height / 2f
 
                 canvas.drawRoundRect(
-                    rect,
+                    left, top, right, bottom,
                     config.customCornerRadius,
                     config.customCornerRadius,
                     paint
@@ -376,7 +439,7 @@ class PageIndicatorView @JvmOverloads constructor(
 
                 if (config.strokeWidth > 0 && isActive) {
                     canvas.drawRoundRect(
-                        rect,
+                        left, top, right, bottom,
                         config.customCornerRadius,
                         config.customCornerRadius,
                         strokePaint
@@ -385,13 +448,12 @@ class PageIndicatorView @JvmOverloads constructor(
             }
 
             IndicatorShape.RECTANGLE -> {
-                val rect = RectF(
-                    centerX - width / 2f,
-                    centerY - height / 2f,
-                    centerX + width / 2f,
-                    centerY + height / 2f
-                )
-                canvas.drawRect(rect, paint)
+                val left = centerX - width / 2f
+                val top = centerY - height / 2f
+                val right = centerX + width / 2f
+                val bottom = centerY + height / 2f
+
+                canvas.drawRect(left, top, right, bottom, paint)
             }
 
             IndicatorShape.DIAMOND -> {
@@ -407,9 +469,20 @@ class PageIndicatorView @JvmOverloads constructor(
         }
     }
 
+    private fun optimizedInvalidate() {
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastInvalidateTime >= invalidateThreshold) {
+            invalidate()
+            lastInvalidateTime = currentTime
+        } else {
+            post { invalidate() }
+        }
+    }
+
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         animatorSet?.cancel()
+        animatorSet = null
     }
 
     fun resetAnimations() {
@@ -417,8 +490,14 @@ class PageIndicatorView @JvmOverloads constructor(
         animatedScale = 1f
         animatedAlpha = 1f
         animatedRotation = 0f
-        slideOffset = currentPage.toFloat()
-        isAnimating = false
-        invalidate()
+        slideProgress = 0f
+        animationDirection = 0
+        isTransitioning = false
+        optimizedInvalidate()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        setLayerType(LAYER_TYPE_HARDWARE, null)
     }
 }

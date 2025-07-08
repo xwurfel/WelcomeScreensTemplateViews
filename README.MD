@@ -1,25 +1,22 @@
-# Welcome Screen Views
+# Welcome Screen Views Library
 
-A customizable welcome screen library for Android applications using traditional Views.
+A highly customizable welcome screen library for Android applications using traditional Views.
 
 ## Overview
 
-This library provides a ready-to-use welcome screen implementation that can be easily integrated
-into any Android application using traditional Android Views. It offers a clean, modern design with
-customizable elements to create an engaging first-time user experience.
+This library provides a ready-to-use welcome screen implementation that can be easily integrated into any Android application using traditional Android Views. It offers a clean, modern design with extensive customization options to create an engaging first-time user experience.
 
 ## Features
 
-- Fully customizable welcome screen layout
-- Built with traditional Android Views (ViewPager2, custom Views)
-- Material Design 3 components
-- Support for multiple welcome pages
-- Customizable animations and transitions
-- Light and dark theme support
-- Multiple pre-built configurations
-- Support for both Activity and Fragment integration
-- Image loading with Glide
-- Comprehensive page indicator with animations
+- **Fully Customizable** - Every aspect can be configured: colors, fonts, animations, spacing, and more
+- **Traditional Android Views** - Built with ViewPager2 and custom Views for optimal performance
+- **Multiple Pre-built Themes** - Modern, Dark, Material 3, Neon, Monochrome, Playful, and Corporate themes
+- **Rich Animations** - 8 different page indicator animations (Scale, Fade, Slide, Morphing, Bounce, Pulse, Rotate)
+- **Flexible Button Placement** - Configure Skip, Next, Previous, and Finish buttons anywhere on screen
+- **Versatile Image Support** - Resources, URLs, Drawables with multiple sizing modes
+- **Accessibility Ready** - Comprehensive accessibility support with proper content descriptions
+- **Light & Dark Themes** - Built-in support for both light and dark themes
+- **Fragment & Activity Support** - Easy integration in both Fragments and Activities
 
 ## Installation
 
@@ -32,54 +29,39 @@ dependencies {
 }
 ```
 
-2. Make sure your project includes the required dependencies (already included in the library):
+2. The library includes all required dependencies:
 
 ```kotlin
-// These are included in the library module
+// Already included in the library
 implementation("com.github.bumptech.glide:glide:4.16.0")
 implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
-implementation("androidx.viewpager2:viewpager2:1.1.0")
+implementation("com.google.android.material:material:1.12.0")
 ```
 
-## Usage
+## Quick Start
 
-### Basic Usage (Activity)
-
-1. Create welcome screen data:
+### Basic Usage
 
 ```kotlin
+// Create welcome screen data
 val welcomeScreens = listOf(
     welcomeScreenData {
         title("Welcome to Our App")
-        description("Discover amazing features and possibilities")
+        description("Discover amazing features and endless possibilities")
         imageRes(R.drawable.welcome_image)
     },
     welcomeScreenData {
-        title("Easy to Use")
-        description("Simple and intuitive interface")
+        title("Easy to Use") 
+        description("Simple and intuitive interface designed for everyone")
         imageRes(R.drawable.feature_image)
     }
 )
-```
 
-2. Launch the welcome screens:
-
-```kotlin
-WelcomeScreensFactory.launch(
-    context = this,
+// Launch with modern theme
+val fragment = WelcomeScreensFactory.createModernFragment(
     screens = welcomeScreens,
-    onFinish = { /* Handle completion */ }
-)
-```
-
-### Fragment Usage
-
-```kotlin
-val fragment = WelcomeScreensFactory.createFragment(
-    screens = welcomeScreens,
-    config = WelcomeScreenConfigFactory.createModernConfig(),
     onSkip = { /* Handle skip */ },
-    onFinish = { /* Handle finish */ }
+    onFinish = { /* Handle completion */ }
 )
 
 supportFragmentManager.beginTransaction()
@@ -87,89 +69,152 @@ supportFragmentManager.beginTransaction()
     .commit()
 ```
 
-### Manual Activity Setup
-
-For more control, you can extend `WelcomeScreensActivity`:
+### Activity Integration
 
 ```kotlin
-class MyWelcomeActivity : WelcomeScreensActivity() {
+class WelcomeActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        
         val screens = createWelcomeScreens()
-        val config = WelcomeScreenConfigFactory.createModernConfig()
-
-        setupWelcomeScreens(
+        val fragment = WelcomeScreensFactory.createModernFragment(
             screens = screens,
-            config = config,
             onSkip = { finish() },
             onFinish = {
-                // Start main activity
                 startActivity(Intent(this, MainActivity::class.java))
                 finish()
             }
         )
+        
+        supportFragmentManager.beginTransaction()
+            .replace(android.R.id.content, fragment)
+            .commit()
     }
 }
 ```
 
-## Configuration
+## Pre-built Themes
 
-The library provides extensive customization options through `WelcomeScreenConfig`:
+The library includes 8 carefully designed themes:
+
+```kotlin
+// Modern theme with clean design
+WelcomeScreensFactory.createModernFragment(screens, onSkip, onFinish)
+
+// Minimal theme with essential elements only
+WelcomeScreensFactory.createMinimalFragment(screens, onFinish)
+
+// Dark theme for night-friendly experience
+WelcomeScreensFactory.createDarkFragment(screens, onSkip, onFinish)
+
+// Material 3 theme following latest guidelines
+WelcomeScreenConfigFactory.createMaterial3Theme()
+
+// Neon dark theme with glowing effects
+WelcomeScreenConfigFactory.createNeonDarkTheme()
+
+// Monochrome theme for elegant simplicity
+WelcomeScreenConfigFactory.createMonochromeTheme()
+
+// Playful theme with vibrant colors
+WelcomeScreenConfigFactory.createPlayfulTheme()
+
+// Corporate theme for professional apps
+WelcomeScreenConfigFactory.createCorporateTheme()
+```
+
+## Configuration
 
 ### Basic Configuration
 
 ```kotlin
 val config = welcomeScreenConfig {
-    // Background
+    // Background styling
     backgroundColor = 0xFFFFFFFF.toInt()
     useGradientBackground = true
     backgroundGradientColor = 0xFFF5F5F5.toInt()
-
-    // Content padding
-    contentPadding = 48 // pixels
+    
+    // Content spacing
+    contentPadding = 48
+    
+    // Custom spacing between elements
+    customSpacing = WelcomeScreenSpacing(
+        imageToTitleSpacing = 120,
+        titleToDescriptionSpacing = 48,
+        descriptionToIndicatorSpacing = 72
+    )
 }
 ```
 
 ### Button Configuration
 
+Configure Skip, Next, Previous, and Finish buttons:
+
 ```kotlin
 val config = welcomeScreenConfig {
-    // Skip button
-    skipButton = ButtonConfig(
-        isVisible = true,
-        text = "Skip",
-        placement = ButtonPlacement.TOP_RIGHT,
-        style = ButtonStyle(
-            backgroundColor = 0x00000000, // Transparent
-            textColor = 0xFF9E9E9E.toInt(),
-            textSize = 42f,
+    // Skip button (top-right by default)
+    skipButton {
+        isVisible = true
+        text = "Skip"
+        placement = ButtonPlacement.TOP_RIGHT
+        style {
+            backgroundColor = 0x00000000
+            textColor = 0xFF9E9E9E.toInt()
+            textSize = 42f
             cornerRadius = 60f
-        )
-    )
-
-    // Next/Previous buttons
-    nextButton = ButtonConfig(
-        text = "Next",
-        style = ButtonStyle(
-            backgroundColor = 0xFF2196F3.toInt(),
-            textColor = 0xFFFFFFFF.toInt(),
-            cornerRadius = 72f,
-            paddingHorizontal = 72,
+        }
+    }
+    
+    // Next button (bottom-right by default)
+    nextButton {
+        text = "Next"
+        placement = ButtonPlacement.BOTTOM_RIGHT
+        style {
+            backgroundColor = 0xFF2196F3.toInt()
+            textColor = 0xFFFFFFFF.toInt()
+            cornerRadius = 72f
+            paddingHorizontal = 72
             paddingVertical = 36
-        )
-    )
-
-    // Finish button
-    finishButton = ButtonConfig(
-        text = "Get Started",
-        style = ButtonStyle(
-            backgroundColor = 0xFF4CAF50.toInt(),
-            textColor = 0xFFFFFFFF.toInt(),
-            cornerRadius = 84f,
             fontWeight = 600
-        )
-    )
+        }
+    }
+    
+    // Previous button (bottom-left by default)
+    previousButton {
+        text = "Back"
+        placement = ButtonPlacement.BOTTOM_LEFT
+        style {
+            backgroundColor = 0x00000000
+            textColor = 0xFF9E9E9E.toInt()
+            borderWidth = 3
+            borderColor = 0xFF9E9E9E.toInt()
+            cornerRadius = 72f
+        }
+    }
+    
+    // Finish button (bottom-center on last page)
+    finishButton {
+        text = "Get Started"
+        placement = ButtonPlacement.BOTTOM_CENTER
+        style {
+            backgroundColor = 0xFF4CAF50.toInt()
+            textColor = 0xFFFFFFFF.toInt()
+            cornerRadius = 84f
+            paddingHorizontal = 96
+            paddingVertical = 48
+            fontWeight = 600
+        }
+    }
+}
+```
+
+#### Button Placement Options
+
+```kotlin
+enum class ButtonPlacement {
+    TOP_LEFT, TOP_RIGHT, TOP_CENTER,
+    BOTTOM_LEFT, BOTTOM_RIGHT, BOTTOM_CENTER,
+    CENTER_LEFT, CENTER_RIGHT
 }
 ```
 
@@ -177,28 +222,47 @@ val config = welcomeScreenConfig {
 
 ```kotlin
 val config = welcomeScreenConfig {
-    pageIndicator = PageIndicatorConfig(
-        isVisible = true,
-        activeColor = 0xFF2196F3.toInt(),
-        inactiveColor = 0x4D9E9E9E,
-        size = 24, // pixels
-        spacing = 36, // pixels
-        animationType = IndicatorAnimation.SLIDE,
+    pageIndicator {
+        isVisible = true
+        activeColor = 0xFF2196F3.toInt()
+        inactiveColor = 0x4D9E9E9E
+        size = 24 // pixels
+        spacing = 36 // pixels
+        placement = IndicatorPlacement.CENTER_BELOW_DESCRIPTION
+        animationType = IndicatorAnimation.SLIDE
         animationDuration = 300
-    )
+        
+        shape = IndicatorShape.CIRCLE
+        useProgressiveSizing = false
+        enableGlow = false
+        glowColor = 0xFFFFFFFF.toInt()
+        glowRadius = 12f
+    }
 }
 ```
 
-Available animation types:
+#### Available Animations
 
-- `SCALE` - Scale animation for active indicator
-- `FADE` - Fade in/out animation
-- `SLIDE` - Slide and expand animation
-- `MORPHING` - Morphing shape animation
-- `BOUNCE` - Bouncing animation
-- `PULSE` - Pulsing animation
-- `ROTATE` - Rotating animation
-- `NONE` - No animation
+```kotlin
+enum class IndicatorAnimation {
+    SCALE,      // Scale animation for active indicator
+    FADE,       // Fade in/out animation  
+    SLIDE,      // Slide and expand animation
+    MORPHING,   // Morphing shape animation
+    BOUNCE,     // Bouncing animation
+    PULSE,      // Pulsing animation
+    ROTATE,     // Rotating animation
+    NONE        // No animation
+}
+```
+
+#### Indicator Shapes
+
+```kotlin
+enum class IndicatorShape {
+    CIRCLE, ROUNDED_RECTANGLE, RECTANGLE, DIAMOND
+}
+```
 
 ### Text Styling
 
@@ -207,10 +271,18 @@ val config = welcomeScreenConfig {
     titleTextColor = 0xFF000000.toInt()
     titleTextSize = 84f // pixels
     titleTypeface = WelcomeTypeface.DEFAULT_BOLD
-
+    
     descriptionTextColor = 0xFF9E9E9E.toInt()
     descriptionTextSize = 48f // pixels
     descriptionTypeface = WelcomeTypeface.DEFAULT
+}
+```
+
+#### Available Typefaces
+
+```kotlin
+enum class WelcomeTypeface {
+    DEFAULT, DEFAULT_BOLD, SANS_SERIF, SERIF, MONOSPACE
 }
 ```
 
@@ -221,6 +293,7 @@ val config = welcomeScreenConfig {
     imageCornerRadius = 48f
     imageElevation = 12f
     imageScaleType = ImageScaleType.FIT
+    
     imageSizeConfig = ImageSizeConfig(
         sizeMode = ImageSizeMode.ASPECT_RATIO,
         aspectRatio = 1.2f,
@@ -231,131 +304,169 @@ val config = welcomeScreenConfig {
 
 #### Image Size Modes
 
-- `ASPECT_RATIO` - Maintains aspect ratio
-- `FIXED_SIZE` - Fixed width and height
-- `FILL_WIDTH` - Fills available width
-- `PERCENTAGE_WIDTH` - Percentage of available width
-- `CUSTOM` - Custom constraints
-
-### Pre-built Configurations
-
-The library includes several pre-built configurations:
-
 ```kotlin
-// Minimal configuration
-val minimalConfig = WelcomeScreenConfigFactory.createMinimalConfig()
+enum class ImageSizeMode {
+    ASPECT_RATIO,     // Maintains aspect ratio
+    FIXED_SIZE,       // Fixed width and height
+    FILL_WIDTH,       // Fills available width
+    PERCENTAGE_WIDTH, // Percentage of available width
+    CUSTOM           // Custom constraints
+}
 
-// Modern configuration
-val modernConfig = WelcomeScreenConfigFactory.createModernConfig()
-
-// Dark theme configuration
-val darkConfig = WelcomeScreenConfigFactory.createDarkThemeConfig()
-
-// Custom theme configuration
-val customConfig = WelcomeScreenConfigFactory.createCustomThemeConfig(
-    primaryColor = 0xFF2196F3.toInt(),
-    backgroundColor = 0xFFFFFFFF.toInt(),
-    textColor = 0xFF000000.toInt(),
-    accentColor = 0xFF4CAF50.toInt()
-)
+ImageSizeConfig.small()      // Small centered image
+ImageSizeConfig.banner()     // Wide banner-style image
+ImageSizeConfig.portrait()   // Tall portrait image
+ImageSizeConfig.fillWidth(aspectRatio = 1.5f)
 ```
 
 ## Advanced Usage
 
-### Custom Welcome Screen Data
+### Custom Theme Creation
 
 ```kotlin
-val screenData = WelcomeScreenData(
-    imageRes = R.drawable.welcome_image,
-    imageUrl = "https://example.com/image.jpg", // Alternative to imageRes
-    imageDrawable = ContextCompat.getDrawable(this, R.drawable.icon), // Alternative
-    title = "Welcome",
-    description = "Get started with our app",
-    backgroundColor = 0xFFF5F5F5.toInt(),
-    textColor = 0xFF333333.toInt(),
-    contentDescription = "Welcome screen illustration"
+val customConfig = WelcomeScreenConfigFactory.createCustomThemeConfig(
+    primaryColor = 0xFF9C27B0.toInt(),
+    backgroundColor = 0xFFF3E5F5.toInt(),
+    textColor = 0xFF4A148C.toInt(),
+    accentColor = 0xFFE91E63.toInt()
 )
 ```
 
-### Using Builder Pattern
+### Welcome Screen Data Options
 
 ```kotlin
 val screenData = welcomeScreenData {
-    imageRes(R.drawable.welcome_image)
+    // Image options (use one)
+    imageRes(R.drawable.welcome_image)                           // Resource
+    imageUrl("https://example.com/image.jpg")                   // URL
+    imageDrawable(ContextCompat.getDrawable(context, R.drawable.icon)) // Drawable
+    
     title("Welcome to Our App")
-    description("Start your journey with us")
+    description("Start your journey with us today")
+    
     backgroundColor(0xFFF5F5F5.toInt())
     textColor(0xFF333333.toInt())
-    contentDescription("Welcome illustration")
+    contentDescription("Welcome screen illustration")
 }
 ```
 
-### Custom Spacing
+### Advanced Configuration Example
 
 ```kotlin
-val config = welcomeScreenConfig {
-    customSpacing = WelcomeScreenSpacing(
-        imageToTitleSpacing = 120,
-        titleToDescriptionSpacing = 48,
-        descriptionToIndicatorSpacing = 72,
-        indicatorToButtonSpacing = 96,
-        horizontalPadding = 72,
-        verticalPadding = 96
+val advancedConfig = welcomeScreenConfig {
+    backgroundColor = 0xFF1C1C1E.toInt()
+    useGradientBackground = true
+    backgroundGradientColor = 0xFF2C2C2E.toInt()
+    
+    customSpacing {
+        imageToTitleSpacing = 120
+        titleToDescriptionSpacing = 48
+        descriptionToIndicatorSpacing = 72
+        horizontalPadding = 96
+        verticalPadding = 144
+    }
+    
+    pageIndicator {
+        animationType = IndicatorAnimation.PULSE
+        shape = IndicatorShape.CIRCLE
+        enableGlow = true
+        glowColor = 0xFF10B981.toInt()
+        glowRadius = 12f
+        useProgressiveSizing = true
+        maxSize = 36
+        minSize = 18
+    }
+    
+    imageSizeConfig = ImageSizeConfig(
+        sizeMode = ImageSizeMode.PERCENTAGE_WIDTH,
+        widthFraction = 0.8f,
+        aspectRatio = 1.2f,
+        horizontalPadding = 48
     )
 }
 ```
 
+## Demo Application
+
+The included demo app (`MainActivity.kt`) showcases all available themes and configurations:
+
 ## Image Loading
 
-The library uses Glide for image loading, supporting:
+The library uses Glide for efficient image loading with support for:
 
 - **Resource images**: `imageRes(R.drawable.image)`
-- **URL images**: `imageUrl("https://example.com/image.jpg")`
+- **Network images**: `imageUrl("https://example.com/image.jpg")`
 - **Drawable objects**: `imageDrawable(drawable)`
 
-Images are automatically rounded according to the `imageCornerRadius` configuration.
+Images are automatically rounded according to `imageCornerRadius` configuration.
 
 ## Accessibility
 
-The library includes comprehensive accessibility support:
-
-- Content descriptions for images
-- Semantic labels for navigation
-- Proper focus handling
-- Screen reader compatibility
+Comprehensive accessibility features included:
 
 ```kotlin
 val screenData = welcomeScreenData {
     imageRes(R.drawable.welcome)
     title("Welcome")
-    description("Get started")
-    contentDescription("Welcome screen showing app features")
+    description("Get started with our amazing app")
+    contentDescription("Welcome screen showing app features and benefits")
 }
 ```
 
-## Theming
+- Content descriptions for images and screens
+- Semantic labels for navigation buttons
+- Screen reader compatibility
+- Proper focus handling
+- Keyboard navigation support
 
-### Color Values
+## Best Practices
 
-All colors should be provided as integer values:
-
+### 1. Theme Selection
 ```kotlin
-// Using color resources
-val color = ContextCompat.getColor(context, R.color.primary)
+WelcomeScreensFactory.createPlayfulFragment(screens, onSkip, onFinish)
 
-// Using hex values
-val color = 0xFF2196F3.toInt() // Blue
+WelcomeScreenConfigFactory.createCorporateTheme()
 
-// Using alpha
-val transparentColor = 0x802196F3.toInt() // Semi-transparent blue
+WelcomeScreensFactory.createMinimalFragment(screens, onFinish)
 ```
 
-### Typography
+### 2. Button Configuration
+```kotlin
+skipButton { placement = ButtonPlacement.TOP_RIGHT }
+nextButton { placement = ButtonPlacement.BOTTOM_RIGHT }
+previousButton { placement = ButtonPlacement.BOTTOM_LEFT }
+finishButton { placement = ButtonPlacement.BOTTOM_CENTER }
+```
 
-Available typeface options:
+### 3. Image Optimization
+```kotlin
+imageSizeConfig = ImageSizeConfig.small() // For icon-style images
+imageSizeConfig = ImageSizeConfig.banner() // For wide illustrations
+```
 
-- `WelcomeTypeface.DEFAULT`
-- `WelcomeTypeface.DEFAULT_BOLD`
-- `WelcomeTypeface.SANS_SERIF`
-- `WelcomeTypeface.SERIF`
-- `WelcomeTypeface.MONOSPACE`
+### 4. Color Usage
+```kotlin
+// Use consistent color schemes
+val primaryColor = 0xFF2196F3.toInt()
+val backgroundColor = 0xFFFFFFFF.toInt() 
+val textColor = 0xFF000000.toInt()
+
+// Apply alpha for subtle variations
+val fadedTextColor = primaryColor.withAlpha(0.7f)
+```
+
+## Requirements
+
+- **Min SDK**: 24 (Android 7.0)
+- **Target SDK**: 35 (Android 15)
+- **Kotlin**: 2.1.21+
+- **AndroidX**: Required
+
+## Dependencies
+
+```kotlin
+// Core dependencies (included automatically)
+implementation("com.github.bumptech.glide:glide:4.16.0") 
+implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.9.0")
+implementation("com.google.android.material:material:1.12.0")
+```
