@@ -14,6 +14,7 @@ import androidx.fragment.app.Fragment
 import androidx.viewpager2.widget.ViewPager2
 import com.volpis.welcome_screen.config.IndicatorPlacement
 import com.volpis.welcome_screen.config.WelcomeScreenConfig
+import com.volpis.welcome_screen.config.ButtonPlacement
 import com.volpis.welcome_screen.utils.configure
 import com.volpis.welcome_screen.utils.createStyledButton
 import com.volpis.welcome_screen.utils.positionButton
@@ -38,6 +39,9 @@ class WelcomeScreensFragment : Fragment() {
 
     private var onSkip: (() -> Unit)? = null
     private var onFinish: (() -> Unit)? = null
+
+    // Track button state to prevent conflicts
+    private var isTransitioning = false
 
     companion object {
         fun newInstance(
@@ -110,7 +114,6 @@ class WelcomeScreensFragment : Fragment() {
             override fun onPageSelected(position: Int) {
                 super.onPageSelected(position)
                 updateButtonVisibility(position)
-                animateButtonChanges()
             }
 
             override fun onPageScrolled(
@@ -122,6 +125,11 @@ class WelcomeScreensFragment : Fragment() {
                 if (config.enableParallaxEffect) {
                     applyParallaxEffect(position, positionOffset)
                 }
+            }
+
+            override fun onPageScrollStateChanged(state: Int) {
+                super.onPageScrollStateChanged(state)
+                isTransitioning = state != ViewPager2.SCROLL_STATE_IDLE
             }
         })
     }
@@ -189,13 +197,11 @@ class WelcomeScreensFragment : Fragment() {
 
     private fun setupButtons() {
         skipButton.configure(config.skipButton) {
-            animateButtonClick(skipButton) {
-                onSkip?.invoke()
-            }
+            handleButtonClick { onSkip?.invoke() }
         }
 
         nextButton.configure(config.nextButton) {
-            animateButtonClick(nextButton) {
+            handleButtonClick {
                 val currentItem = viewPager.currentItem
                 if (currentItem < screens.size - 1) {
                     viewPager.setCurrentItem(currentItem + 1, true)
@@ -204,7 +210,7 @@ class WelcomeScreensFragment : Fragment() {
         }
 
         previousButton.configure(config.previousButton) {
-            animateButtonClick(previousButton) {
+            handleButtonClick {
                 val currentItem = viewPager.currentItem
                 if (currentItem > 0) {
                     viewPager.setCurrentItem(currentItem - 1, true)
@@ -213,76 +219,123 @@ class WelcomeScreensFragment : Fragment() {
         }
 
         finishButton.configure(config.finishButton) {
-            animateButtonClick(finishButton) {
-                onFinish?.invoke()
-            }
+            handleButtonClick { onFinish?.invoke() }
         }
 
-        skipButton.positionButton(config.skipButton.placement, 0, 0)
-        nextButton.positionButton(config.nextButton.placement, 0, 0)
-        previousButton.positionButton(config.previousButton.placement, 0, 0)
-        finishButton.positionButton(config.finishButton.placement, 0, 0)
-
+        // Position buttons with improved spacing logic
+        positionButtonsWithSpacing()
         updateButtonVisibility(0)
     }
 
-    private fun animateButtonClick(button: Button, action: () -> Unit) {
-        button.animate()
-            .scaleX(0.95f)
-            .scaleY(0.95f)
-            .setDuration(100)
-            .withEndAction {
-                button.animate()
-                    .scaleX(1f)
-                    .scaleY(1f)
-                    .setDuration(100)
-                    .withEndAction { action() }
-                    .start()
+    private fun positionButtonsWithSpacing() {
+        val systemBarHeight = getSystemBarHeight()
+        val buttonMargin = requireContext().resources.getDimensionPixelSize(R.dimen.welcome_button_margin)
+
+        skipButton.positionButton(config.skipButton.placement, 0, systemBarHeight)
+
+        // Special handling for bottom buttons to prevent overlap
+        val bottomButtons = listOf(
+            nextButton to config.nextButton,
+            previousButton to config.previousButton,
+            finishButton to config.finishButton
+        ).filter { it.second.isVisible && isBottomPlacement(it.second.placement) }
+
+        if (bottomButtons.size > 1) {
+            // Adjust spacing for multiple bottom buttons
+            bottomButtons.forEach { (button, buttonConfig) ->
+                button.positionButton(buttonConfig.placement, 0, systemBarHeight)
+
+                // Add extra margin to prevent overlap
+                (button.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
+                    when (buttonConfig.placement) {
+                        ButtonPlacement.BOTTOM_LEFT -> {
+                            params.rightMargin = buttonMargin * 2
+                        }
+                        ButtonPlacement.BOTTOM_RIGHT -> {
+                            params.leftMargin = buttonMargin * 2
+                        }
+                        ButtonPlacement.BOTTOM_CENTER -> {
+                            params.leftMargin = buttonMargin
+                            params.rightMargin = buttonMargin
+                        }
+                        else -> {}
+                    }
+                    button.layoutParams = params
+                }
             }
-            .start()
+        } else {
+            nextButton.positionButton(config.nextButton.placement, 0, systemBarHeight)
+            previousButton.positionButton(config.previousButton.placement, 0, systemBarHeight)
+            finishButton.positionButton(config.finishButton.placement, 0, systemBarHeight)
+        }
+    }
+
+    private fun isBottomPlacement(placement: ButtonPlacement): Boolean {
+        return placement in listOf(
+            ButtonPlacement.BOTTOM_LEFT,
+            ButtonPlacement.BOTTOM_RIGHT,
+            ButtonPlacement.BOTTOM_CENTER
+        )
+    }
+
+    private fun getSystemBarHeight(): Int {
+        return ViewCompat.getRootWindowInsets(requireView())
+            ?.getInsets(WindowInsetsCompat.Type.systemBars())?.bottom ?: 0
+    }
+
+    private fun handleButtonClick(action: () -> Unit) {
+        if (isTransitioning) return
+
+        // Simple haptic feedback without animation delays
+        try {
+            requireView().performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+        } catch (e: Exception) {
+            // Ignore if haptic feedback is not available
+        }
+
+        // Execute action immediately for better responsiveness
+        action()
     }
 
     private fun updateButtonVisibility(position: Int) {
         val isFirstPage = position == 0
         val isLastPage = position == screens.size - 1
 
-        val skipVisibility = if (config.skipButton.isVisible && !isLastPage) {
+        // Update visibility immediately without animations for better performance
+        skipButton.visibility = if (config.skipButton.isVisible && !isLastPage) {
             View.VISIBLE
         } else {
             View.GONE
         }
 
-        val previousVisibility = if (config.previousButton.isVisible && !isFirstPage) {
+        previousButton.visibility = if (config.previousButton.isVisible && !isFirstPage) {
             View.VISIBLE
         } else {
             View.GONE
         }
 
-        val nextVisibility = if (config.nextButton.isVisible && !isLastPage) {
+        nextButton.visibility = if (config.nextButton.isVisible && !isLastPage) {
             View.VISIBLE
         } else {
             View.GONE
         }
 
-        val finishVisibility = if (config.finishButton.isVisible && isLastPage) {
+        finishButton.visibility = if (config.finishButton.isVisible && isLastPage) {
             View.VISIBLE
         } else {
             View.GONE
         }
 
-        skipButton.visibility = skipVisibility
-        previousButton.visibility = previousVisibility
-        nextButton.visibility = nextVisibility
-        finishButton.visibility = finishVisibility
+        // Subtle fade animation only for newly visible buttons
+        animateVisibleButtons()
     }
 
-    private fun animateButtonChanges() {
+    private fun animateVisibleButtons() {
         listOf(skipButton, nextButton, previousButton, finishButton).forEach { button ->
-            if (button.isVisible) {
-                button.alpha = 0f
+            if (button.isVisible && button.alpha == 0f) {
                 button.animate()
                     .alpha(1f)
-                    .setDuration(300)
+                    .setDuration(200)
                     .setInterpolator(AccelerateDecelerateInterpolator())
                     .start()
             }
@@ -314,17 +367,17 @@ class WelcomeScreensFragment : Fragment() {
         rootContainer.alpha = 0f
         rootContainer.animate()
             .alpha(1f)
-            .setDuration(500)
+            .setDuration(400) // Faster entrance
             .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
 
         pageIndicator.alpha = 0f
-        pageIndicator.translationY = 50f
+        pageIndicator.translationY = 30f // Reduced translation
         pageIndicator.animate()
             .alpha(1f)
             .translationY(0f)
-            .setDuration(600)
-            .setStartDelay(300)
+            .setDuration(300) // Faster animation
+            .setStartDelay(200) // Reduced delay
             .setInterpolator(AccelerateDecelerateInterpolator())
             .start()
 
@@ -337,12 +390,12 @@ class WelcomeScreensFragment : Fragment() {
 
         visibleButtons.forEachIndexed { index, button ->
             button.alpha = 0f
-            button.translationY = 30f
+            button.translationY = 20f // Reduced translation
             button.animate()
                 .alpha(1f)
                 .translationY(0f)
-                .setDuration(400)
-                .setStartDelay(500 + index * 100L)
+                .setDuration(250) // Faster animation
+                .setStartDelay(300 + index * 50L) // Reduced delay and stagger
                 .setInterpolator(AccelerateDecelerateInterpolator())
                 .start()
         }
@@ -359,20 +412,9 @@ class WelcomeScreensFragment : Fragment() {
                 systemBars.bottom
             )
 
-            adjustButtonPositionsForInsets(systemBars)
+            positionButtonsWithSpacing()
 
             insets
-        }
-    }
-
-    private fun adjustButtonPositionsForInsets(systemBars: androidx.core.graphics.Insets) {
-        val extraBottomMargin = systemBars.bottom
-
-        listOf(nextButton, previousButton, finishButton).forEach { button ->
-            (button.layoutParams as? FrameLayout.LayoutParams)?.let { params ->
-                params.bottomMargin += extraBottomMargin
-                button.layoutParams = params
-            }
         }
     }
 
@@ -384,5 +426,10 @@ class WelcomeScreensFragment : Fragment() {
     override fun onDestroyView() {
         super.onDestroyView()
         viewPager.adapter = null
+        listOf(skipButton, nextButton, previousButton, finishButton).forEach { button ->
+            button.animate().cancel()
+        }
+        rootContainer.animate().cancel()
+        pageIndicator.animate().cancel()
     }
 }

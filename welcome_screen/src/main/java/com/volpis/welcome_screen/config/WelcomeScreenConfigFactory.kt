@@ -360,7 +360,6 @@ object WelcomeScreenConfigFactory {
                 style = ButtonStyle(
                     backgroundColor = 0xFF000000.toInt(),
                     textColor = 0xFFFFFFFF.toInt(),
-                    cornerRadius = 0f,
                     paddingHorizontal = 120,
                     paddingVertical = 48,
                     textSize = 42f,
@@ -382,7 +381,6 @@ object WelcomeScreenConfigFactory {
             descriptionTextSize = 42f,
             descriptionTypeface = WelcomeTypeface.SERIF,
             backgroundColor = 0xFFFFFFFF.toInt(),
-            imageCornerRadius = 0f,
             imageElevation = 0f,
             imageSizeConfig = ImageSizeConfig.small(),
             customSpacing = WelcomeScreenSpacing(

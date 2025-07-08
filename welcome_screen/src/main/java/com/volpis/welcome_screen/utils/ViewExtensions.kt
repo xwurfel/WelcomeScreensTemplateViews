@@ -110,24 +110,30 @@ fun Button.configure(buttonConfig: ButtonConfig, onClick: () -> Unit) {
     minWidth = context.dpToPx(88)
     minHeight = context.dpToPx(48)
 
-    elevation = context.dpToPx(4).toFloat()
+    elevation = context.dpToPx(2).toFloat() // Reduced elevation for better performance
 
     isClickable = true
     isFocusable = true
 
+    // Simplified click handling - removed animations for better performance
     setOnClickListener {
-        performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+        try {
+            performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+        } catch (e: Exception) {
+            // Ignore if haptic feedback is not available
+        }
         onClick()
     }
 
     contentDescription = "${buttonConfig.text} button"
 
-    alpha = 0f
-    scaleX = 0.9f
-    scaleY = 0.9f
+    // Start with full visibility and scale for immediate responsiveness
+    alpha = 1f
+    scaleX = 1f
+    scaleY = 1f
 }
 
-fun View.positionButton(placement: ButtonPlacement, parentWidth: Int, parentHeight: Int) {
+fun View.positionButton(placement: ButtonPlacement, parentWidth: Int, systemBarHeight: Int) {
     val layoutParams = FrameLayout.LayoutParams(
         FrameLayout.LayoutParams.WRAP_CONTENT,
         FrameLayout.LayoutParams.WRAP_CONTENT
@@ -136,6 +142,7 @@ fun View.positionButton(placement: ButtonPlacement, parentWidth: Int, parentHeig
     val margin16 = context.dpToPx(16)
     val margin24 = context.dpToPx(24)
     val margin32 = context.dpToPx(32)
+    val margin48 = context.dpToPx(48) // Additional margin for better spacing
 
     when (placement) {
         ButtonPlacement.TOP_LEFT -> {
@@ -155,17 +162,20 @@ fun View.positionButton(placement: ButtonPlacement, parentWidth: Int, parentHeig
 
         ButtonPlacement.BOTTOM_LEFT -> {
             layoutParams.gravity = Gravity.BOTTOM or Gravity.START
-            layoutParams.setMargins(margin24, 0, 0, margin32)
+            // Increased margins and spacing for better separation
+            layoutParams.setMargins(margin24, 0, margin48, margin32 + systemBarHeight)
         }
 
         ButtonPlacement.BOTTOM_RIGHT -> {
             layoutParams.gravity = Gravity.BOTTOM or Gravity.END
-            layoutParams.setMargins(0, 0, margin24, margin32)
+            // Increased margins and spacing for better separation
+            layoutParams.setMargins(margin48, 0, margin24, margin32 + systemBarHeight)
         }
 
         ButtonPlacement.BOTTOM_CENTER -> {
             layoutParams.gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
-            layoutParams.setMargins(margin24, 0, margin24, margin32)
+            layoutParams.setMargins(margin32, 0, margin32, margin32 + systemBarHeight)
+            // Full width for center buttons to prevent overlap
             layoutParams.width = FrameLayout.LayoutParams.MATCH_PARENT
         }
 
@@ -185,20 +195,25 @@ fun View.positionButton(placement: ButtonPlacement, parentWidth: Int, parentHeig
 
 fun Context.createStyledButton(buttonConfig: ButtonConfig): Button {
     return Button(this).apply {
-        val outValue = TypedValue()
-        theme.resolveAttribute(android.R.attr.selectableItemBackground, outValue, true)
-
-        configure(buttonConfig) { /* onClick will be set separately */ }
-
+        // Remove state list animator for better performance
         stateListAnimator = null
+
+        // Apply configuration
+        configure(buttonConfig) { /* onClick will be set separately */ }
 
         isClickable = true
         isFocusable = true
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
+
+        // Optimize for performance
+        setLayerType(View.LAYER_TYPE_NONE, null)
     }
 }
 
-fun View.fadeIn(duration: Long = 300, delay: Long = 0) {
+// Performance-optimized animation functions
+fun View.fadeIn(duration: Long = 200, delay: Long = 0) {
+    if (alpha == 1f) return // Skip if already visible
+
     alpha = 0f
     animate()
         .alpha(1f)
@@ -208,7 +223,9 @@ fun View.fadeIn(duration: Long = 300, delay: Long = 0) {
         .start()
 }
 
-fun View.fadeOut(duration: Long = 300, delay: Long = 0) {
+fun View.fadeOut(duration: Long = 200, delay: Long = 0) {
+    if (alpha == 0f) return // Skip if already hidden
+
     animate()
         .alpha(0f)
         .setDuration(duration)
@@ -217,8 +234,8 @@ fun View.fadeOut(duration: Long = 300, delay: Long = 0) {
         .start()
 }
 
-fun View.slideInFromBottom(duration: Long = 400, delay: Long = 0) {
-    translationY = height.toFloat()
+fun View.slideInFromBottom(duration: Long = 300, delay: Long = 0) {
+    translationY = context.dpToPx(30).toFloat() // Reduced translation for better performance
     alpha = 0f
     animate()
         .translationY(0f)
@@ -229,9 +246,9 @@ fun View.slideInFromBottom(duration: Long = 400, delay: Long = 0) {
         .start()
 }
 
-fun View.slideOutToBottom(duration: Long = 400, delay: Long = 0) {
+fun View.slideOutToBottom(duration: Long = 300, delay: Long = 0) {
     animate()
-        .translationY(height.toFloat())
+        .translationY(context.dpToPx(30).toFloat())
         .alpha(0f)
         .setDuration(duration)
         .setStartDelay(delay)
@@ -239,9 +256,9 @@ fun View.slideOutToBottom(duration: Long = 400, delay: Long = 0) {
         .start()
 }
 
-fun View.scaleIn(duration: Long = 300, delay: Long = 0) {
-    scaleX = 0.8f
-    scaleY = 0.8f
+fun View.scaleIn(duration: Long = 250, delay: Long = 0) {
+    scaleX = 0.9f // Less dramatic scaling for better performance
+    scaleY = 0.9f
     alpha = 0f
     animate()
         .scaleX(1f)
@@ -253,10 +270,11 @@ fun View.scaleIn(duration: Long = 300, delay: Long = 0) {
         .start()
 }
 
-fun View.pulseAnimation(duration: Long = 1000) {
-    val animator = ValueAnimator.ofFloat(1f, 1.1f, 1f)
+// Simplified pulse animation with limited duration for performance
+fun View.pulseAnimation(duration: Long = 800, cycles: Int = 3) {
+    val animator = ValueAnimator.ofFloat(1f, 1.05f, 1f)
     animator.duration = duration
-    animator.repeatCount = ValueAnimator.INFINITE
+    animator.repeatCount = cycles - 1 // Limited cycles for performance
     animator.addUpdateListener { animation ->
         val scale = animation.animatedValue as Float
         scaleX = scale
@@ -266,11 +284,13 @@ fun View.pulseAnimation(duration: Long = 1000) {
 }
 
 fun Int.withAlpha(alpha: Float): Int {
-    val a = (alpha * 255).toInt()
+    val a = (alpha * 255).toInt().coerceIn(0, 255)
     return (this and 0x00FFFFFF) or (a shl 24)
 }
 
 fun interpolateColor(color1: Int, color2: Int, fraction: Float): Int {
+    val clampedFraction = fraction.coerceIn(0f, 1f)
+
     val a1 = (color1 shr 24 and 0xff) / 255f
     val r1 = (color1 shr 16 and 0xff) / 255f
     val g1 = (color1 shr 8 and 0xff) / 255f
@@ -281,13 +301,43 @@ fun interpolateColor(color1: Int, color2: Int, fraction: Float): Int {
     val g2 = (color2 shr 8 and 0xff) / 255f
     val b2 = (color2 and 0xff) / 255f
 
-    val a = a1 + (a2 - a1) * fraction
-    val r = r1 + (r2 - r1) * fraction
-    val g = g1 + (g2 - g1) * fraction
-    val b = b1 + (b2 - b1) * fraction
+    val a = a1 + (a2 - a1) * clampedFraction
+    val r = r1 + (r2 - r1) * clampedFraction
+    val g = g1 + (g2 - g1) * clampedFraction
+    val b = b1 + (b2 - b1) * clampedFraction
 
     return ((a * 255).toInt() shl 24) or
             ((r * 255).toInt() shl 16) or
             ((g * 255).toInt() shl 8) or
             (b * 255).toInt()
+}
+
+// Extension to check if multiple buttons are using the same placement
+fun List<ButtonPlacement>.hasConflict(): Boolean {
+    return this.groupBy { it }.any { it.value.size > 1 }
+}
+
+// Extension to get safe margins for button placement
+fun ButtonPlacement.getSafeMargins(context: Context): IntArray {
+    val baseMargin = context.dpToPx(24)
+    val extraMargin = context.dpToPx(16)
+
+    return when (this) {
+        ButtonPlacement.BOTTOM_LEFT -> intArrayOf(
+            baseMargin,
+            0,
+            baseMargin + extraMargin,
+            baseMargin
+        )
+
+        ButtonPlacement.BOTTOM_RIGHT -> intArrayOf(
+            baseMargin + extraMargin,
+            0,
+            baseMargin,
+            baseMargin
+        )
+
+        ButtonPlacement.BOTTOM_CENTER -> intArrayOf(baseMargin * 2, 0, baseMargin * 2, baseMargin)
+        else -> intArrayOf(baseMargin, baseMargin, baseMargin, baseMargin)
+    }
 }

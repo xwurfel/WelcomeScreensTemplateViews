@@ -41,6 +41,8 @@ class WelcomeScreenView @JvmOverloads constructor(
     private lateinit var descriptionText: TextView
     private lateinit var bottomSpacer: Space
 
+    private var isAnimated = false
+
     init {
         orientation = VERTICAL
         gravity = Gravity.CENTER_HORIZONTAL
@@ -68,6 +70,8 @@ class WelcomeScreenView @JvmOverloads constructor(
             cardElevation = context.dpToPx(8).toFloat()
             radius = context.dpToPx(16).toFloat()
             useCompatPadding = true
+
+            setLayerType(LAYER_TYPE_NONE, null)
         }
 
         imageView = ImageView(context).apply {
@@ -104,8 +108,9 @@ class WelcomeScreenView @JvmOverloads constructor(
             letterSpacing = 0f
             setLineSpacing(context.dpToPx(4).toFloat(), 1f)
 
+            // Set initial state for animation
             alpha = 0f
-            translationY = context.dpToPx(20).toFloat()
+            translationY = context.dpToPx(15).toFloat() // Reduced for smoother animation
         }
 
         descriptionText = TextView(context).apply {
@@ -121,8 +126,9 @@ class WelcomeScreenView @JvmOverloads constructor(
             setLineSpacing(context.dpToPx(6).toFloat(), 1.1f)
             letterSpacing = 0.01f
 
+            // Set initial state for animation
             alpha = 0f
-            translationY = context.dpToPx(20).toFloat()
+            translationY = context.dpToPx(15).toFloat() // Reduced for smoother animation
         }
 
         contentContainer.addView(titleText)
@@ -145,7 +151,9 @@ class WelcomeScreenView @JvmOverloads constructor(
         setupText(screenData, config)
         setupSpacing(config)
         setupAccessibility(screenData)
-        animateContent()
+
+        // Don't auto-animate here, let the fragment control animations
+        isAnimated = false
     }
 
     private fun setupBackground(screenData: WelcomeScreenData, config: WelcomeScreenConfig) {
@@ -349,51 +357,89 @@ class WelcomeScreenView @JvmOverloads constructor(
         importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_YES
     }
 
+    // Optimized animation method
+    fun startEntranceAnimation() {
+        if (isAnimated) return // Prevent duplicate animations
+
+        isAnimated = true
+
+        // Reset initial states
+        titleText.alpha = 0f
+        titleText.translationY = context.dpToPx(15).toFloat()
+        descriptionText.alpha = 0f
+        descriptionText.translationY = context.dpToPx(15).toFloat()
+
+        if (imageContainer.isVisible) {
+            imageContainer.alpha = 0f
+            imageContainer.scaleX = 0.95f // Reduced scale for smoother animation
+            imageContainer.scaleY = 0.95f
+        }
+
+        animateContent()
+    }
+
     private fun animateContent() {
+        // Faster, smoother animations with reduced delays
         titleText.animate()
             .alpha(1f)
             .translationY(0f)
-            .setDuration(600)
+            .setDuration(400) // Faster animation
             .setInterpolator(AccelerateDecelerateInterpolator())
-            .setStartDelay(200)
+            .setStartDelay(100) // Reduced delay
             .start()
 
         descriptionText.animate()
             .alpha(1f)
             .translationY(0f)
-            .setDuration(600)
+            .setDuration(400) // Faster animation
             .setInterpolator(AccelerateDecelerateInterpolator())
-            .setStartDelay(400)
+            .setStartDelay(200) // Reduced delay
             .start()
 
         if (imageContainer.isVisible) {
-            imageContainer.alpha = 0f
-            imageContainer.scaleX = 0.9f
-            imageContainer.scaleY = 0.9f
-
             imageContainer.animate()
                 .alpha(1f)
                 .scaleX(1f)
                 .scaleY(1f)
-                .setDuration(700)
+                .setDuration(500) // Faster animation
                 .setInterpolator(AccelerateDecelerateInterpolator())
-                .setStartDelay(100)
+                .setStartDelay(50) // Minimal delay
                 .start()
         }
     }
 
-    fun startEntranceAnimation() {
+    fun resetAnimation() {
+        isAnimated = false
         titleText.alpha = 0f
-        titleText.translationY = context.dpToPx(20).toFloat()
+        titleText.translationY = context.dpToPx(15).toFloat()
         descriptionText.alpha = 0f
-        descriptionText.translationY = context.dpToPx(20).toFloat()
+        descriptionText.translationY = context.dpToPx(15).toFloat()
 
         if (imageContainer.isVisible) {
             imageContainer.alpha = 0f
-            imageContainer.scaleX = 0.9f
-            imageContainer.scaleY = 0.9f
+            imageContainer.scaleX = 0.95f
+            imageContainer.scaleY = 0.95f
         }
+    }
 
-        animateContent()
+    fun showContentImmediately() {
+        isAnimated = true
+        titleText.alpha = 1f
+        titleText.translationY = 0f
+        descriptionText.alpha = 1f
+        descriptionText.translationY = 0f
+
+        if (imageContainer.isVisible) {
+            imageContainer.alpha = 1f
+            imageContainer.scaleX = 1f
+            imageContainer.scaleY = 1f
+        }
+    }
+
+    override fun onDetachedFromWindow() {
+        super.onDetachedFromWindow()
+        titleText.animate().cancel()
+        descriptionText.animate().cancel()
+        imageContainer.animate().cancel()
     }
 }
