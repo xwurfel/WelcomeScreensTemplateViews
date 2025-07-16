@@ -23,11 +23,30 @@ This library provides a ready-to-use welcome screen implementation that can be e
 1. Add the library module to your project:
 
 ```kotlin
-// In your app's build.gradle.kts
-dependencies {
-    implementation(project(":welcome_screen"))
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+        maven {
+            url = uri("https://repo.repsy.io/mvn/mykhailoi/volpisandroidrepository")
+            credentials {
+                username = "username" // ask for a username and password from your Team Lead
+                password = "password"
+            }
+        }
+    }
 }
 ```
+
+```kotlin
+// In your app's build.gradle.kts
+dependencies {
+    implementation("com.volpis:welcome-screen:1.0.1")
+}
+```
+
+Alternatively, you can just copy and paste code from here into your project.
 
 2. The library includes all required dependencies:
 
