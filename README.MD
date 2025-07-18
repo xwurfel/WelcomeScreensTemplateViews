@@ -31,13 +31,15 @@ dependencyResolutionManagement {
         maven {
             url = uri("https://repo.repsy.io/mvn/mykhailoi/volpisandroidrepository")
             credentials {
-                username = "username" // ask for a username and password from your Team Lead
+                username = "username"
                 password = "password"
             }
         }
     }
 }
 ```
+
+You can retrieve credentials [here](https://docs.google.com/document/d/1g65EeDTh-eDLw7hX6D1HGYnsv0EwspSRdUyi83ghjkw/edit?usp=sharing) or ask your team lead to provide them.
 
 ```kotlin
 // In your app's build.gradle.kts
